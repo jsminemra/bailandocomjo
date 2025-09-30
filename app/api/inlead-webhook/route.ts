@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Determinar frequência baseada no objetivo (padrão 5x)
-    let weeklyFrequency = 5;
+    const weeklyFrequency = 5;
 
     const leadData = {
       name: body.nome || 'Lead sem nome',
