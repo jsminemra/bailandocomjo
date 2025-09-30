@@ -11,6 +11,7 @@ async function seedWorkouts() {
       name: 'Treino Iniciante 3x Semana',
       level: 'iniciante',
       frequency: 3,
+      location: 'casa',
       description: 'Treino funcional básico para iniciantes',
       days: {
         create: [
@@ -64,6 +65,7 @@ async function seedWorkouts() {
       name: 'Treino Iniciante 4x Semana',
       level: 'iniciante',
       frequency: 4,
+      location: 'casa',
       description: 'Treino funcional com divisão muscular básica',
       days: {
         create: [
@@ -126,6 +128,7 @@ async function seedWorkouts() {
       name: 'Treino Intermediário 4x Semana',
       level: 'intermediario',
       frequency: 4,
+      location: 'casa',
       description: 'Treino com maior intensidade e complexidade',
       days: {
         create: [
@@ -192,6 +195,7 @@ async function seedWorkouts() {
       name: 'Treino Intermediário 5x Semana',
       level: 'intermediario',
       frequency: 5,
+      location: 'casa',
       description: 'Treino intermediário com alta frequência',
       days: {
         create: [
@@ -271,6 +275,7 @@ async function seedWorkouts() {
       name: 'Treino Avançado 5x Semana',
       level: 'avancado',
       frequency: 5,
+      location: 'casa',
       description: 'Treino intenso para praticantes avançados',
       days: {
         create: [
@@ -350,6 +355,7 @@ async function seedWorkouts() {
       name: 'Treino Avançado 6x Semana',
       level: 'avancado',
       frequency: 6,
+      location: 'academia',
       description: 'Treino de elite para máxima performance',
       days: {
         create: [
