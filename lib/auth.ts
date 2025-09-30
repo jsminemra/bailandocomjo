@@ -10,7 +10,7 @@ export const authOptions: NextAuthOptions = {
     EmailProvider({
       server: {
         host: process.env.EMAIL_SERVER_HOST,
-        port: process.env.EMAIL_SERVER_PORT,
+        port: parseInt(process.env.EMAIL_SERVER_PORT || '587'),
         auth: {
           user: process.env.EMAIL_SERVER_USER,
           pass: process.env.EMAIL_SERVER_PASSWORD,
@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "database",
   },
   callbacks: {
-    async signIn({ user, account, profile, email, credentials }) {
+    async signIn({ user }) {
       // Verificar se o email existe na tabela User (se veio de compra)
       if (user.email) {
         const existingUser = await prisma.user.findUnique({
