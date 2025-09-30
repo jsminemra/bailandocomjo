@@ -23,8 +23,9 @@ export async function GET(req: NextRequest) {
     }
 
     const now = new Date();
-    const trialExpired = now > new Date(user.trialEndDate);
-    const daysRemaining = Math.ceil((new Date(user.trialEndDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+const trialEndDate = user.trialEndDate ? new Date(user.trialEndDate) : new Date();
+const trialExpired = now > trialEndDate;
+const daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     return NextResponse.json({
       subscriptionStatus: user.subscriptionStatus,
