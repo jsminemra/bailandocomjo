@@ -24,19 +24,16 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user }) {
-      // Verificar se o email existe na tabela User (se veio de compra)
       if (user.email) {
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email },
         });
 
         if (!existingUser) {
-          // Email não encontrado = não comprou
           console.log(`Tentativa de login bloqueada: ${user.email}`);
-          return false; // Bloqueia o login
+          return false;
         }
 
-        // Email encontrado = comprou, permitir login
         console.log(`Login autorizado: ${user.email}`);
         return true;
       }
@@ -44,7 +41,6 @@ export const authOptions: NextAuthOptions = {
       return false;
     },
     async session({ session, user }) {
-      // Adicionar informações do usuário na sessão
       if (session.user && user.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: user.email },
@@ -65,7 +61,7 @@ export const authOptions: NextAuthOptions = {
           session.user.id = dbUser.id;
           session.user.name = dbUser.name;
           session.user.subscriptionStatus = dbUser.subscriptionStatus;
-          session.user.trialEndDate = dbUser.trialEndDate;
+          session.user.trialEndDate = dbUser.trialEndDate ?? undefined; // 👈 fix
           session.user.experienceLevel = dbUser.experienceLevel;
           session.user.weeklyFrequency = dbUser.weeklyFrequency;
           session.user.workoutLocation = dbUser.workoutLocation;
@@ -78,7 +74,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
-    error: '/login', // Redireciona erros para a página de login
+    error: '/login',
   },
 };
 
