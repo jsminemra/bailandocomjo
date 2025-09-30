@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"  // mudou de "sqlite" para "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Dados da compra
+  platform     String? // "hotmart", "kiwify", etc
+  purchaseId   String?
+  purchaseDate DateTime?
+
+  // Assinatura e trial
+  subscriptionStatus String   @default("trial") // "trial", "active", "canceled"
+  trialStartDate     DateTime @default(now())
+  trialEndDate       DateTime?
+  subscriptionId     String?
+
+  // Relações dos treinos
+  workouts        Workout[]
+  workoutProgress WorkoutProgress[]
+
+  // Relações do NextAuth
+  accounts Account[]
+  sessions Session[]
+  
+  // Questionário
+  hasCompletedQuiz Boolean @default(false)
+  workoutGoal      String?
+  experienceLevel  String?
+  weeklyFrequency  Int?
+  workoutIntensity String?
+  sessionDuration  Int?
+  limitations      String?
+  workoutLocation  String? // "casa" ou "academia"
+
+  @@map("users")
+}
+
+model WorkoutPlan {
+  id          String @id @default(cuid())
+  name        String
+  description String?
+  duration    Int // duração em semanas
+  difficulty  String // "iniciante", "intermediario", "avancado"
+  category    String // "hipertrofia", "emagrecimento", "condicionamento"
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exercises Exercise[]
+  workouts  Workout[]
+
+  @@map("workout_plans")
+}
+
+model Exercise {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  muscleGroup String
+  equipment   String?
+  videoUrl    String?
+  imageUrl    String?
+
+  workoutPlanId String
+  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id])
+
+  sets           Int
+  reps           String // "8-12" ou "10"
+  restTime       Int    // em segundos
+  weight         String? // "corpo", "halter", etc
+  instructions   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workoutProgress WorkoutProgress[]
+
+  @@map("exercises")
+}
+
+model Workout {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  workoutPlanId String
+  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id])
+
+  scheduledDate DateTime
+  completedDate DateTime?
+  status        String   @default("scheduled") // "scheduled", "completed", "skipped"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("workouts")
+}
+
+model WorkoutProgress {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+
+  completedSets Int
+  completedReps String
+  weightUsed    String?
+  notes         String?
+
+  completedAt DateTime @default(now())
+
+  @@map("workout_progress")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+model WorkoutTemplate {
+  id          String @id @default(cuid())
+  name        String
+  level       String // "iniciante", "intermediario", "avancado" 
+  frequency   Int    // 3, 4, 5, 6
+  location    String // "casa" ou "academia"
+  description String?
+  
+  days WorkoutDay[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([level, frequency, location])
+  @@map("workout_templates")
+}
+
+model WorkoutDay {
+  id               String @id @default(cuid())
+  workoutTemplateId String
+  workoutTemplate   WorkoutTemplate @relation(fields: [workoutTemplateId], references: [id], onDelete: Cascade)
+  
+  dayNumber Int    // 1, 2, 3, etc
+  dayName   String // "Dia 1 - Peito e Tríceps"
+  
+  exercises WorkoutExercise[]
+
+  @@map("workout_days")
+}
+
+model WorkoutExercise {
+  id          String @id @default(cuid())
+  workoutDayId String
+  workoutDay   WorkoutDay @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  
+  name         String
+  sets         Int
+  reps         String
+  restSeconds  Int
+  instructions String?
+  muscleGroup  String
+  equipment    String? // "peso corporal", "halteres", "barras"
+  videoUrl     String?
+  
+  order Int // ordem do exercício no treino
+
+  @@map("workout_exercises")
+}
+
+model Lead {
+  id           String   @id @default(cuid())
+  name         String
+  email        String?  
+  age          String?  // "18-29", "30-39", etc
+  experienceLevel String? // "iniciante", "intermediario", "avancado"
+  goal         String?  // "Perder peso", "Ganhar corpo", etc  
+  bodyType     String?  // "Acima do peso", "Magra", "Média"
+  bodyGoal     String?  // "Definida com corpo", "Magra definida"
+  source       String?  // "inlead", "instagram", etc
+  leadStatus   String   @default("new") // "new", "contacted", "converted"
+  
+  userId       String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("leads")
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 export default function SignIn() {
@@ -9,6 +9,7 @@ export default function SignIn() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,19 +17,29 @@ export default function SignIn() {
     setMessage('');
 
     try {
-      const result = await signIn('email', { 
-        email, 
-        redirect: false,
-        callbackUrl: '/dashboard'
+      const response = await fetch('/api/simple-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
       });
 
-      if (result?.error) {
-        setMessage('Erro ao fazer login. Verifique se você já possui uma compra em nosso sistema.');
+      const data = await response.json();
+
+      if (data.success) {
+        // Salvar usuário no sessionStorage
+        sessionStorage.setItem('user', JSON.stringify({ 
+          id: data.userId, 
+          email: email,
+          name: nome 
+        }));
+        
+        // Redirecionar para home
+        window.location.href = '/home';
       } else {
-        setMessage('Link de login enviado para seu email! Verifique sua caixa de entrada.');
+        setMessage(data.message || 'Email não encontrado no sistema.');
       }
     } catch (error) {
-      setMessage('Ocorreu um erro. Tente novamente.');
+      setMessage('Erro ao fazer login. Tente novamente.');
     }
 
     setIsLoading(false);
@@ -37,7 +48,6 @@ export default function SignIn() {
   return (
     <div className="min-h-screen bg-[#111] flex items-center justify-center p-5">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="w-full mb-8 flex justify-center">
           <Image 
             src="/LOGO 1.png" 
@@ -48,22 +58,21 @@ export default function SignIn() {
           />
         </div>
 
-        {/* Title */}
         <div className="w-full mb-6 text-left">
           <p className="text-white text-lg font-normal mb-0">Faça seu</p>
           <p className="text-white text-[30px] font-bold">Login</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="w-full">
           <input
             type="text"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
+            required
             placeholder="Seu primeiro nome"
             className="w-full p-3 mb-5 bg-[#333] text-white rounded-md placeholder-[#aaa] border-0 outline-none"
           />
-          
+
           <input
             type="email"
             value={email}
@@ -76,29 +85,17 @@ export default function SignIn() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#22C55E] hover:bg-[#1e9e50] disabled:bg-gray-600 text-white font-bold py-2.5 px-5 rounded-lg text-base flex items-center justify-center"
+            className="w-full bg-[#22C55E] hover:bg-[#1e9e50] disabled:bg-gray-600 text-white font-bold py-2.5 px-5 rounded-lg text-base"
           >
             {isLoading ? 'Carregando...' : 'Acessar meu treino'}
           </button>
         </form>
 
-        {/* Message */}
         {message && (
-          <div className={`mt-4 p-3 rounded-md text-center w-full ${
-            message.includes('erro') || message.includes('Erro') 
-              ? 'bg-red-900/50 text-red-300 border border-red-700' 
-              : 'bg-green-900/50 text-green-300 border border-green-700'
-          }`}>
+          <div className="mt-4 p-3 rounded-md text-center bg-red-900/50 text-red-300 border border-red-700">
             {message}
           </div>
         )}
-
-        {/* Dev Link */}
-        <div className="mt-8 text-center">
-          <a href="/test" className="text-gray-500 hover:text-gray-400 text-xs">
-            Teste (desenvolvimento)
-          </a>
-        </div>
       </div>
     </div>
   );

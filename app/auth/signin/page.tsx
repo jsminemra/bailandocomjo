@@ -35,17 +35,12 @@ export default function SignIn() {
   };
 
   return (
+  <div style={{backgroundColor: 'red', color: 'white', padding: '50px'}}>
+    <h1>TESTE FUNCIONANDO - GIRL BOOSTER</h1>
     <div className="min-h-screen bg-[#111] flex items-center justify-center p-5">
-      <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="w-full mb-8 flex justify-center">
-          <Image 
-            src="/LOGO 1.png" 
-            alt="Girl Booster" 
-            width={200} 
-            height={80}
-            className="object-contain"
-          />
+        <div className="w-[200px] h-[80px] mb-5 bg-white/10 rounded-lg flex items-center justify-center">
+          <span className="text-white font-bold text-xl">GIRL BOOSTER</span>
         </div>
 
         {/* Title */}
