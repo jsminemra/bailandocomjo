@@ -26,9 +26,9 @@ export const authOptions: NextAuthOptions = {
 
         console.log(`Login autorizado: ${user.email}`);
 
-        // 🔑 Retornar apenas os campos básicos esperados pelo NextAuth
+        // Retornar apenas campos básicos que o NextAuth espera
         return {
-          id: user.id,
+          id: String(user.id), // 🔑 sempre string
           name: user.name,
           email: user.email,
         };
@@ -39,10 +39,10 @@ export const authOptions: NextAuthOptions = {
     strategy: "database",
   },
   callbacks: {
-    async session({ session, user }) {
-      if (session.user && user.email) {
+    async session({ session }) {
+      if (session.user?.email) {
         const dbUser = await prisma.user.findUnique({
-          where: { email: user.email },
+          where: { email: session.user.email },
           select: {
             id: true,
             name: true,
@@ -57,10 +57,10 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (dbUser) {
-          session.user.id = dbUser.id;
+          session.user.id = String(dbUser.id);
           session.user.name = dbUser.name;
           session.user.subscriptionStatus = dbUser.subscriptionStatus;
-          session.user.trialEndDate = dbUser.trialEndDate ?? undefined; // 👈 evita erro null/undefined
+          session.user.trialEndDate = dbUser.trialEndDate ?? undefined;
           session.user.experienceLevel = dbUser.experienceLevel;
           session.user.weeklyFrequency = dbUser.weeklyFrequency;
           session.user.workoutLocation = dbUser.workoutLocation;
