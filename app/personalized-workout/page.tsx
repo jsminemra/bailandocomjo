@@ -259,7 +259,7 @@ export default function PersonalizedWorkout() {
           
           <div className="mb-2">
             <span className="text-gray-400 text-sm">
-              Treino {currentWorkout.level.charAt(0).toUpperCase() + currentWorkout.level.slice(1)} // Treino {currentWorkout.frequency}x Semana
+             Treino {currentWorkout.level.charAt(0).toUpperCase() + currentWorkout.level.slice(1)} - Treino {currentWorkout.frequency}x Semana
             </span>
           </div>
           
