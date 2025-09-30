@@ -15,17 +15,17 @@ export default function SignIn() {
     setMessage('');
 
     try {
-      const result = await signIn('credentials', { 
-        email, 
-        redirect: false, // vamos redirecionar manualmente
-        callbackUrl: '/dashboard'
+      const result = await signIn('credentials', {
+        email,
+        redirect: false,
+        callbackUrl: '/dashboard',
       });
 
-      if (result?.error) {
-        setMessage('Email não encontrado em nosso sistema.');
+      if (result?.ok) {
+        // Redireciona manualmente
+        window.location.href = result.url || '/dashboard';
       } else {
-        // Se deu certo, redireciona
-        window.location.href = '/dashboard';
+        setMessage('Email não encontrado em nosso sistema.');
       }
     } catch (error) {
       setMessage('Ocorreu um erro. Tente novamente.');
