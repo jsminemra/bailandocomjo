@@ -16,7 +16,7 @@ export default function SignIn() {
     setMessage('');
 
     try {
-      const result = await signIn('email', { 
+      const result = await signIn('credentials', { 
         email, 
         redirect: false,
         callbackUrl: '/dashboard'
