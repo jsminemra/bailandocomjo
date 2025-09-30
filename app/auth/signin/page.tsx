@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import Image from 'next/image';
 
 export default function SignIn() {
   const [nome, setNome] = useState('');
@@ -18,14 +17,15 @@ export default function SignIn() {
     try {
       const result = await signIn('credentials', { 
         email, 
-        redirect: false,
+        redirect: false, // vamos redirecionar manualmente
         callbackUrl: '/dashboard'
       });
 
       if (result?.error) {
-        setMessage('Erro ao fazer login. Verifique se você já possui uma compra em nosso sistema.');
+        setMessage('Email não encontrado em nosso sistema.');
       } else {
-        setMessage('Link de login enviado para seu email! Verifique sua caixa de entrada.');
+        // Se deu certo, redireciona
+        window.location.href = '/dashboard';
       }
     } catch (error) {
       setMessage('Ocorreu um erro. Tente novamente.');
@@ -35,14 +35,14 @@ export default function SignIn() {
   };
 
   return (
-  <div style={{backgroundColor: 'red', color: 'white', padding: '50px'}}>
-    <h1>TESTE FUNCIONANDO - GIRL BOOSTER</h1>
     <div className="min-h-screen bg-[#111] flex items-center justify-center p-5">
-        {/* Logo */}
-        <div className="w-[200px] h-[80px] mb-5 bg-white/10 rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-xl">GIRL BOOSTER</span>
-        </div>
+      {/* Logo */}
+      <div className="w-[200px] h-[80px] mb-5 bg-white/10 rounded-lg flex items-center justify-center">
+        <span className="text-white font-bold text-xl">GIRL BOOSTER</span>
+      </div>
 
+      {/* Container */}
+      <div className="w-full max-w-sm">
         {/* Title */}
         <div className="w-full mb-6 text-left">
           <p className="text-white text-lg font-normal mb-0">Faça seu</p>
@@ -79,11 +79,13 @@ export default function SignIn() {
 
         {/* Message */}
         {message && (
-          <div className={`mt-4 p-3 rounded-md text-center w-full ${
-            message.includes('erro') || message.includes('Erro') 
-              ? 'bg-red-900/50 text-red-300 border border-red-700' 
-              : 'bg-green-900/50 text-green-300 border border-green-700'
-          }`}>
+          <div
+            className={`mt-4 p-3 rounded-md text-center w-full ${
+              message.toLowerCase().includes('erro') || message.toLowerCase().includes('não encontrado')
+                ? 'bg-red-900/50 text-red-300 border border-red-700'
+                : 'bg-green-900/50 text-green-300 border border-green-700'
+            }`}
+          >
             {message}
           </div>
         )}

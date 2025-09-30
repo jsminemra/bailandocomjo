@@ -25,7 +25,13 @@ export const authOptions: NextAuthOptions = {
         }
 
         console.log(`Login autorizado: ${user.email}`);
-        return user;
+
+        // 🔑 Retornar apenas os campos básicos esperados pelo NextAuth
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        };
       },
     }),
   ],
@@ -54,7 +60,7 @@ export const authOptions: NextAuthOptions = {
           session.user.id = dbUser.id;
           session.user.name = dbUser.name;
           session.user.subscriptionStatus = dbUser.subscriptionStatus;
-          session.user.trialEndDate = dbUser.trialEndDate ?? undefined;
+          session.user.trialEndDate = dbUser.trialEndDate ?? undefined; // 👈 evita erro null/undefined
           session.user.experienceLevel = dbUser.experienceLevel;
           session.user.weeklyFrequency = dbUser.weeklyFrequency;
           session.user.workoutLocation = dbUser.workoutLocation;
@@ -66,8 +72,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: '/login',
-    error: '/login',
+    signIn: "/login",
+    error: "/login",
   },
 };
 
