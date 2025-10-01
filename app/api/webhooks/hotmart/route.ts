@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
     
     console.log('Webhook Hotmart recebido:', body);
 
-    if (body.event !== 'PURCHASE_APPROVED') {
+    // Aceita PURCHASE_APPROVED, PURCHASE_COMPLETE, etc
+    const event = body.event?.toUpperCase();
+    if (!event?.includes('PURCHASE') || !event?.includes('APPROVED') && !event?.includes('COMPLETE')) {
       return NextResponse.json({ message: 'Evento não processado' }, { status: 200 });
     }
 
