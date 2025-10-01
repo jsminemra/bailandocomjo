@@ -12,6 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Busca usuário apenas pelo email (case insensitive)
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -31,10 +32,13 @@ export async function POST(request: Request) {
         email: user.email,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erro no login:", error);
+
+    const err = error as { code?: string; message?: string };
+
     return NextResponse.json(
-      { error: `Erro ao processar login: ${error.code || ""} ${error.message || error}` },
+      { error: `Erro ao processar login: ${err?.code || ""} ${err?.message || String(error)}` },
       { status: 500 }
     );
   }
