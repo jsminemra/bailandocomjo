@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma'; 
-import { cookies } from 'next/headers';
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
@@ -8,44 +7,34 @@ export async function POST(request: Request) {
 
     if (!email) {
       return NextResponse.json(
-        { error: 'E-mail é obrigatório' },
+        { error: "E-mail é obrigatório" },
         { status: 400 }
       );
     }
 
-    // Busca usuário apenas pelo email
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() }
+      where: { email: email.toLowerCase() },
     });
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Usuário não encontrado. Verifique o e-mail.' },
+        { error: "Usuário não encontrado. Verifique seu e-mail." },
         { status: 401 }
       );
     }
-
-    // Define cookie de sessão simples
-    const cookieStore = await cookies();
-    cookieStore.set('userId', user.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 dias
-    });
 
     return NextResponse.json({
       success: true,
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
-  } catch (error) {
-    console.error('Erro no login:', error);
+  } catch (error: any) {
+    console.error("Erro no login:", error);
     return NextResponse.json(
-      { error: 'Erro ao processar login' },
+      { error: `Erro ao processar login: ${error.code || ""} ${error.message || error}` },
       { status: 500 }
     );
   }
