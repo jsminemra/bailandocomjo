@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 export const authOptions: NextAuthOptions = {
@@ -26,9 +26,8 @@ export const authOptions: NextAuthOptions = {
 
         console.log(`Login autorizado: ${user.email}`);
 
-        // Retornar apenas campos básicos que o NextAuth espera
         return {
-          id: String(user.id), // 🔑 sempre string
+          id: String(user.id),
           name: user.name,
           email: user.email,
         };
@@ -72,8 +71,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/login",
-    error: "/login",
+    signIn: "/auth/signin", // ✅ agora usa só a página correta
+    error: "/auth/signin",
   },
 };
 

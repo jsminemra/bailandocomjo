@@ -1,101 +1,91 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn } from "next-auth/react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
-export default function SignIn() {
-  const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
+export default function SignInPage() {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
-    setMessage('');
+    setError("");
 
     try {
-      const result = await signIn('credentials', {
+      const res = await signIn("credentials", {
         email,
+        name, // opcional, só para exibir no form
         redirect: false,
-        callbackUrl: '/dashboard',
       });
 
-      if (result?.ok) {
-        // Redireciona manualmente
-        window.location.href = result.url || '/dashboard';
+      if (res?.ok) {
+        router.push("/"); // ✅ vai direto pra home
       } else {
-        setMessage('Email não encontrado em nosso sistema.');
+        setError("Usuário não encontrado. Verifique seus dados.");
       }
-    } catch (error) {
-      setMessage('Ocorreu um erro. Tente novamente.');
+    } catch (err) {
+      console.error("Erro ao logar:", err);
+      setError("Erro inesperado. Tente novamente.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-[#111] flex items-center justify-center p-5">
-      {/* Logo */}
-      <div className="w-[200px] h-[80px] mb-5 bg-white/10 rounded-lg flex items-center justify-center">
-        <span className="text-white font-bold text-xl">GIRL BOOSTER</span>
-      </div>
-
-      {/* Container */}
-      <div className="w-full max-w-sm">
-        {/* Title */}
-        <div className="w-full mb-6 text-left">
-          <p className="text-white text-lg font-normal mb-0">Faça seu</p>
-          <p className="text-white text-[30px] font-bold">Login</p>
+    <div className="flex flex-col items-center justify-center h-screen bg-black text-white">
+      <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl shadow-md">
+        {/* Logo no topo */}
+        <div className="flex justify-center mb-6">
+          <Image
+            src="/LOGO 1.png"
+            alt="Girl Booster"
+            width={200}
+            height={60}
+            priority
+          />
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="w-full">
+        <p className="text-center mb-6 text-gray-400">Faça seu login</p>
+
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
           <input
             type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Seu primeiro nome"
-            className="w-full p-3 mb-5 bg-[#333] text-white rounded-md placeholder-[#aaa] border-0 outline-none"
+            placeholder="Digite seu nome"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="p-3 rounded-md text-black"
           />
-          
+
           <input
             type="email"
+            placeholder="Digite seu e-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            placeholder="Email de compra"
-            className="w-full p-3 mb-5 bg-[#333] text-white rounded-md placeholder-[#aaa] border-0 outline-none"
+            className="p-3 rounded-md text-black"
           />
+
+          {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#22C55E] hover:bg-[#1e9e50] disabled:bg-gray-600 text-white font-bold py-2.5 px-5 rounded-lg text-base flex items-center justify-center"
+            className="bg-green-600 hover:bg-green-700 transition p-3 rounded-md font-semibold"
           >
-            {isLoading ? 'Carregando...' : 'Acessar meu treino'}
+            {isLoading ? "Entrando..." : "Acessar meu treino"}
           </button>
         </form>
 
-        {/* Message */}
-        {message && (
-          <div
-            className={`mt-4 p-3 rounded-md text-center w-full ${
-              message.toLowerCase().includes('erro') || message.toLowerCase().includes('não encontrado')
-                ? 'bg-red-900/50 text-red-300 border border-red-700'
-                : 'bg-green-900/50 text-green-300 border border-green-700'
-            }`}
-          >
-            {message}
-          </div>
-        )}
-
-        {/* Dev Link */}
-        <div className="mt-8 text-center">
-          <a href="/test" className="text-gray-500 hover:text-gray-400 text-xs">
-            Teste (desenvolvimento)
-          </a>
-        </div>
+        <p className="text-center text-gray-500 text-xs mt-6">
+          Teste (desenvolvimento)
+        </p>
       </div>
     </div>
   );
