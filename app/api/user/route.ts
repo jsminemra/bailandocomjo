@@ -29,7 +29,7 @@ export async function GET() {
 
     return NextResponse.json({
       id: user.id,
-      username: user.username,
+      name: user.name,
       email: user.email
     });
   } catch (error) {

@@ -6,11 +6,11 @@ const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
-    const { username, email } = await request.json();
+    const { name, email } = await request.json();
 
-    if (!username || !email) {
+    if (!name || !email) {
       return NextResponse.json(
-        { error: 'Nome de usuário e e-mail são obrigatórios' },
+        { error: 'Nome e e-mail são obrigatórios' },
         { status: 400 }
       );
     }
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const user = await prisma.user.findFirst({
       where: {
         AND: [
-          { username: username.toLowerCase() },
+          { name: name.toLowerCase() },
           { email: email.toLowerCase() }
         ]
       }
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       success: true,
       user: {
         id: user.id,
-        username: user.username,
+        name: user.name,
         email: user.email
       }
     });
