@@ -51,6 +51,7 @@ const handler = NextAuth({
   },
   pages: {
     signIn: '/login',
+    error: "/login", // qualquer erro também volta pro login
   },
 });
 
