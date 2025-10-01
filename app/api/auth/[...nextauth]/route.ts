@@ -32,7 +32,7 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   session: {
-    strategy: "jwt",
+    strategy: "jwt", // 👈 mantém JWT (mais simples no Vercel)
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -51,12 +51,16 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
-    async redirect({ baseUrl }) {
-      return `${baseUrl}/home`;
+    async redirect({ url, baseUrl }) {
+      // Se o login foi feito, sempre redireciona pra /home
+      if (url.startsWith(baseUrl)) {
+        return `${baseUrl}/home`;
+      }
+      return baseUrl;
     },
   },
   pages: {
-    signIn: "/login",
+    signIn: "/login", // 👈 só existe essa página de login agora
     error: "/login",
   },
 };
