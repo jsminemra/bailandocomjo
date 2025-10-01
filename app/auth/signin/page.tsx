@@ -20,14 +20,13 @@ export default function SignInPage() {
     try {
       const res = await signIn("credentials", {
         email,
-        name, // opcional, só para exibir no form
-        redirect: false,
+        redirect: false, // ✅ não deixa NextAuth redirecionar sozinho
       });
 
       if (res?.ok) {
-        router.push("/"); // ✅ vai direto pra home
+        router.push("/"); // ✅ sempre vai para home
       } else {
-        setError("Usuário não encontrado. Verifique seus dados.");
+        setError("Usuário não encontrado. Verifique seu e-mail.");
       }
     } catch (err) {
       console.error("Erro ao logar:", err);
@@ -59,7 +58,6 @@ export default function SignInPage() {
             placeholder="Digite seu nome"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            required
             className="p-3 rounded-md text-black"
           />
 

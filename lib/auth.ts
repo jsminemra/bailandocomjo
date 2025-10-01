@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 export const authOptions: NextAuthOptions = {
@@ -71,8 +71,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/auth/signin", // ✅ agora usa só a página correta
-    error: "/auth/signin",
+    signIn: "/auth/signin", // ✅ usa só essa
+    error: "/auth/signin",  // ✅ erros também caem aqui
   },
 };
 
