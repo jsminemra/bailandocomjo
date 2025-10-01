@@ -1,104 +1,102 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
-export default function SignIn() {
-  const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
+export default function LoginPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: ''
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage('');
+    setError('');
 
     try {
-      const result = await signIn('email', { 
-        email, 
-        redirect: false,
-        callbackUrl: '/dashboard'
+      const response = await fetch('/api/simple-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
 
-      if (result?.error) {
-        setMessage('Erro ao fazer login. Verifique se você já possui uma compra em nosso sistema.');
+      const data = await response.json();
+
+      if (response.ok) {
+        // Salva em sessionStorage para compatibilidade com a home
+        sessionStorage.setItem('user', JSON.stringify(data.user));
+        // Redireciona para a home
+        router.push('/home'); 
       } else {
-        setMessage('Link de login enviado para seu email! Verifique sua caixa de entrada.');
+        setError(data.error || 'Usuário não encontrado');
       }
     } catch (error) {
-      setMessage('Ocorreu um erro. Tente novamente.');
+      setError('Erro ao conectar com o servidor');
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-[#111] flex items-center justify-center p-5">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="w-full mb-8 flex justify-center">
-          <Image 
-            src="/LOGO 1.png" 
-            alt="Girl Booster" 
-            width={200} 
-            height={80}
-            className="object-contain"
-          />
-        </div>
-
-        {/* Title */}
-        <div className="w-full mb-6 text-left">
-          <p className="text-white text-lg font-normal mb-0">Faça seu</p>
-          <p className="text-white text-[30px] font-bold">Login</p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="w-full">
-          <input
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Seu primeiro nome"
-            className="w-full p-3 mb-5 bg-[#333] text-white rounded-md placeholder-[#aaa] border-0 outline-none"
-          />
-          
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            placeholder="Email de compra"
-            className="w-full p-3 mb-5 bg-[#333] text-white rounded-md placeholder-[#aaa] border-0 outline-none"
-          />
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-[#22C55E] hover:bg-[#1e9e50] disabled:bg-gray-600 text-white font-bold py-2.5 px-5 rounded-lg text-base flex items-center justify-center"
-          >
-            {isLoading ? 'Carregando...' : 'Acessar meu treino'}
-          </button>
-        </form>
-
-        {/* Message */}
-        {message && (
-          <div className={`mt-4 p-3 rounded-md text-center w-full ${
-            message.includes('erro') || message.includes('Erro') 
-              ? 'bg-red-900/50 text-red-300 border border-red-700' 
-              : 'bg-green-900/50 text-green-300 border border-green-700'
-          }`}>
-            {message}
+        <div className="text-center mb-8">
+          <div className="inline-block">
+            <h1 className="text-4xl font-black italic text-white">
+              <span className="text-pink-500">GIRL</span>
+              <span className="text-white">BOOSTER</span>
+            </h1>
           </div>
-        )}
-
-        {/* Dev Link */}
-        <div className="mt-8 text-center">
-          <a href="/test" className="text-gray-500 hover:text-gray-400 text-xs">
-            Teste (desenvolvimento)
-          </a>
         </div>
+
+        <div className="bg-gray-900 rounded-lg p-8">
+          <p className="text-white text-sm mb-2">Faça seu</p>
+          <h2 className="text-white text-3xl font-bold mb-6">Login</h2>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input
+              type="text"
+              placeholder="Digite seu nome"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-3 bg-gray-800 text-white rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+              required
+            />
+            
+            <input
+              type="email"
+              placeholder="Digite seu e-mail"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-3 bg-gray-800 text-white rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+              required
+            />
+
+            {error && (
+              <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-2 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Entrando...' : 'Acessar meu treino'}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-gray-600 text-xs text-center mt-4">
+          Teste (desenvolvimento)
+        </p>
       </div>
     </div>
   );
