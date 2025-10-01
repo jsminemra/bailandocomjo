@@ -17,19 +17,20 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // usa NextAuth credentials provider
       const res = await signIn("credentials", {
-        redirect: false,           // evita redirecionamento automático
-        name: formData.name,       // enviado ao authorize()
+        redirect: false,
+        name: formData.name,
         email: formData.email,
       });
 
-      // res = { ok: boolean, error?: string, status?: number }
       if (res?.ok) {
-        // sucesso: força ir pra /home
         router.push("/home");
       } else {
-        setError((res as any)?.error || "Usuário não encontrado");
+        if (res?.error) {
+          setError(res.error);
+        } else {
+          setError("Usuário não encontrado");
+        }
       }
     } catch (err) {
       console.error("Erro no signIn:", err);
