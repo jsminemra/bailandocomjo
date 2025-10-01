@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Image from "next/image";
 
 export default function LoginPage() {
@@ -16,22 +17,23 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/simple-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email }),
+      // usa NextAuth credentials provider
+      const res = await signIn("credentials", {
+        redirect: false,           // evita redirecionamento automático
+        name: formData.name,       // enviado ao authorize()
+        email: formData.email,
       });
-      const data = await res.json();
-      if (res.ok) {
-        // salva somente o que precisa para a home
-        sessionStorage.setItem("user", JSON.stringify({ id: data.user.id, name: data.user.name, email: data.user.email }));
+
+      // res = { ok: boolean, error?: string, status?: number }
+      if (res?.ok) {
+        // sucesso: força ir pra /home
         router.push("/home");
       } else {
-        setError(data.error || "Usuário não encontrado");
+        setError((res as any)?.error || "Usuário não encontrado");
       }
     } catch (err) {
-      console.error("Erro no fetch /api/simple-login", err);
-      setError("Erro ao conectar com o servidor");
+      console.error("Erro no signIn:", err);
+      setError("Erro inesperado. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -42,12 +44,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <Image src="/LOGO 1.png" alt="Girl Booster" width={220} height={80} priority />
+          <Image src="/LOGO 1.png" alt="Logo" width={220} height={80} priority />
         </div>
 
         <div className="bg-gray-900 rounded-lg p-8">
           <h2 className="text-white text-2xl font-bold mb-2 text-center">Faça seu login</h2>
-          <p className="text-gray-400 text-center mb-6">Entre com seu e-mail de compra</p>
+          <p className="text-gray-400 text-center mb-6">Entre com seu nome e e-mail de compra</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
@@ -55,6 +57,7 @@ export default function LoginPage() {
               placeholder="Digite seu nome"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
               className="w-full px-4 py-3 bg-gray-800 text-white rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
 
@@ -82,8 +85,6 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
-
-        <p className="text-gray-600 text-xs text-center mt-4">Teste (desenvolvimento)</p>
       </div>
     </div>
   );
