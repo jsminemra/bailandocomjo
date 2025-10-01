@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -46,13 +47,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-block">
-            <h1 className="text-4xl font-black italic text-white">
-              <span className="text-pink-500">GIRL</span>
-              <span className="text-white">BOOSTER</span>
-            </h1>
-          </div>
+        <div className="flex justify-center mb-6">
+          <Image src="/LOGO 1.png" alt="Logo" width={220} height={80} priority />
         </div>
 
         <div className="bg-gray-900 rounded-lg p-8">
