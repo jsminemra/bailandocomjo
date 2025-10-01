@@ -7,24 +7,25 @@ const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
-      name: "Email",
+      name: "Credenciais",
       credentials: {
-        email: { label: "Email", type: "email" }
+        name: { label: "Nome", type: "text" },   // aparece no form
+        email: { label: "Email", type: "email" } // validado no BD
       },
       async authorize(credentials) {
-        if (!credentials?.email) {
-          return null;
-        }
+        if (!credentials?.email) return null;
 
+        // 🔍 Só valida se o email existe no banco
         const user = await prisma.user.findUnique({
           where: { email: credentials.email }
         });
 
-        if (user && user.subscriptionStatus === 'active') {
+        if (user) {
           return {
             id: user.id,
             email: user.email,
-            name: user.name
+            // se tiver nome no BD usa, senão usa o que veio do formulário
+            name: user.name || credentials.name || "Usuária"
           };
         }
 
@@ -39,19 +40,26 @@ const handler = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.name = user.name; // 🔥 guarda o nome no token
+        token.email = user.email;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      return `${baseUrl}/home`; // ✅ sempre manda pra home
+    },
   },
   pages: {
-    signIn: '/login',
-    error: "/login", // qualquer erro também volta pro login
+    signIn: "/login",
+    error: "/login",
   },
 });
 
