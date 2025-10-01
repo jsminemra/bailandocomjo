@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const userId = cookieStore.get('userId');
 
     if (!userId) {
