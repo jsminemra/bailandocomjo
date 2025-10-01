@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
     
     console.log('Webhook Kirvano recebido:', body);
 
-    if (body.status !== 'approved' && body.status !== 'paid') {
+    const status = body.status?.toLowerCase();
+    if (status !== 'approved' && status !== 'paid') {
       return NextResponse.json({ message: 'Pedido não aprovado' }, { status: 200 });
     }
 
