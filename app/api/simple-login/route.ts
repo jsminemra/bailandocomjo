@@ -1,30 +1,59 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+import { cookies } from 'next/headers';
 
-export async function POST(req: NextRequest) {
+const prisma = new PrismaClient();
+
+export async function POST(request: Request) {
   try {
-    const { email } = await req.json();
+    const { username, email } = await request.json();
 
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
-
-    if (!user || user.subscriptionStatus !== 'active') {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Email não encontrado ou assinatura inativa.' 
-      });
+    if (!username || !email) {
+      return NextResponse.json(
+        { error: 'Nome de usuário e e-mail são obrigatórios' },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      userId: user.id 
+    // Busca o usuário no banco de dados
+    const user = await prisma.user.findFirst({
+      where: {
+        AND: [
+          { username: username.toLowerCase() },
+          { email: email.toLowerCase() }
+        ]
+      }
     });
 
-  } catch (error) {
-    return NextResponse.json({ 
-      success: false, 
-      message: 'Erro ao fazer login' 
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuário não encontrado. Verifique seus dados.' },
+        { status: 401 }
+      );
+    }
+
+    // Define um cookie de sessão simples
+    const cookieStore = cookies();
+    cookieStore.set('userId', user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7 // 7 dias
     });
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('Erro no login:', error);
+    return NextResponse.json(
+      { error: 'Erro ao processar login' },
+      { status: 500 }
+    );
   }
 }

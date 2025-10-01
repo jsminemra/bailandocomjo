@@ -2,100 +2,109 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Link from 'next/link';
 
-export default function SignIn() {
-  const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('');
+export default function LoginPage() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    username: '',
+    email: ''
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage('');
+    setError('');
 
     try {
       const response = await fetch('/api/simple-login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
 
-      if (data.success) {
-        // Salvar usuário no sessionStorage
-        sessionStorage.setItem('user', JSON.stringify({ 
-          id: data.userId, 
-          email: email,
-          name: nome 
-        }));
-        
-        // Redirecionar para home
-        window.location.href = '/home';
+      if (response.ok) {
+        // Login bem-sucedido
+        localStorage.setItem('user', JSON.stringify(data.user));
+        router.push('/dashboard');
       } else {
-        setMessage(data.message || 'Email não encontrado no sistema.');
+        setError(data.error || 'Erro ao fazer login');
       }
     } catch (error) {
-      setMessage('Erro ao fazer login. Tente novamente.');
+      setError('Erro ao conectar com o servidor');
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-[#111] flex items-center justify-center p-5">
-      <div className="w-full max-w-md">
-        <div className="w-full mb-8 flex justify-center">
-          <Image 
-            src="/LOGO 1.png" 
-            alt="Girl Booster" 
-            width={200} 
-            height={80}
-            className="object-contain"
-          />
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-purple-900 flex items-center justify-center p-4">
+      <div className="bg-black/40 backdrop-blur-lg rounded-2xl p-8 w-full max-w-md border border-pink-500/20">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
+            GirlBooster 💪
+          </h1>
+          <p className="text-gray-300 mt-2">Faça login para continuar</p>
         </div>
 
-        <div className="w-full mb-6 text-left">
-          <p className="text-white text-lg font-normal mb-0">Faça seu</p>
-          <p className="text-white text-[30px] font-bold">Login</p>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Nome de usuário
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              className="w-full px-4 py-3 bg-white/10 border border-pink-500/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-pink-400 transition"
+              placeholder="Digite seu nome de usuário"
+            />
+          </div>
 
-        <form onSubmit={handleSubmit} className="w-full">
-          <input
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            required
-            placeholder="Seu primeiro nome"
-            className="w-full p-3 mb-5 bg-[#333] text-white rounded-md placeholder-[#aaa] border-0 outline-none"
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              E-mail
+            </label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-3 bg-white/10 border border-pink-500/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-pink-400 transition"
+              placeholder="Digite seu e-mail"
+            />
+          </div>
 
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            placeholder="Email de compra"
-            className="w-full p-3 mb-5 bg-[#333] text-white rounded-md placeholder-[#aaa] border-0 outline-none"
-          />
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#22C55E] hover:bg-[#1e9e50] disabled:bg-gray-600 text-white font-bold py-2.5 px-5 rounded-lg text-base"
+            className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-pink-600 hover:to-purple-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Carregando...' : 'Acessar meu treino'}
+            {isLoading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
-        {message && (
-          <div className="mt-4 p-3 rounded-md text-center bg-red-900/50 text-red-300 border border-red-700">
-            {message}
-          </div>
-        )}
+        <div className="mt-6 text-center">
+          <p className="text-gray-400 text-sm">
+            Não tem uma conta?{' '}
+            <Link href="/signup" className="text-pink-400 hover:text-pink-300 font-medium">
+              Cadastre-se
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
