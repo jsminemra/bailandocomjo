@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Páginas públicas que não precisam de autenticação
-  const publicPaths = ['/login', '/signup', '/', '/api/simple-login', '/api/signup'];
+  const publicPaths = ['/', '/signup', '/api/simple-login', '/api/signup'];
   const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith('/api/'));
 
   // Se está tentando acessar uma página protegida sem estar logado
@@ -15,9 +15,10 @@ export function middleware(request: NextRequest) {
   }
 
   // Se está logado e tentando acessar login ou signup, redireciona para dashboard
-  if ((pathname === '/login' || pathname === '/signup') && userId) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
+// Se está logado e tentando acessar a home (login) ou signup, redireciona para dashboard
+if ((pathname === '/' || pathname === '/signup') && userId) {
+  return NextResponse.redirect(new URL('/home', request.url));
+}
 
   return NextResponse.next();
 }
