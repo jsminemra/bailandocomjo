@@ -1,60 +1,69 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [email, setEmail] = useState('');
+  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const response = await fetch('/api/simple-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/simple-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (response.ok) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-        router.push('/dashboard');
+      if (res.ok) {
+        router.push("/"); // ✅ redireciona pra home
       } else {
-        setError(data.error || 'Erro ao fazer login');
+        setError(data.error || "Erro no login.");
       }
     } catch (err) {
-      setError('Erro ao conectar com o servidor');
+      console.error("Erro no login:", err);
+      setError("Erro inesperado.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-purple-900 flex items-center justify-center p-4">
-      <div className="bg-black/40 backdrop-blur-lg rounded-2xl p-8 w-full max-w-md border border-pink-500/20">
-        <div className="text-center mb-8">
-          <Image
-            src="/LOGO%201.png"   // 👈 atenção: espaço vira "%20"
-            alt="GirlBooster Logo"
-            width={200}
-            height={60}
-            className="mx-auto"
-            priority
-          />
-          <p className="text-gray-300 mt-2">Entre com seu e-mail de compra</p>
-        </div>
+    <div className="flex items-center justify-center h-screen bg-gradient-to-br from-pink-700 to-purple-900">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white/10 p-6 rounded-xl shadow-md text-white w-96"
+      >
+        <h1 className="text-2xl font-bold text-center mb-4">GIRL BOOSTER</h1>
+        <p className="text-center mb-4">Entre com seu e-mail de compra</p>
 
-        {/* Formulário de login aqui */}
-      </div>
+        <input
+          type="email"
+          placeholder="Seu e-mail"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full p-2 rounded-md text-black mb-4"
+        />
+
+        {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-pink-600 hover:bg-pink-700 transition p-2 rounded-md font-semibold"
+        >
+          {isLoading ? "Entrando..." : "Entrar"}
+        </button>
+      </form>
     </div>
   );
 }
