@@ -1,9 +1,9 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {   // 👈 exporta aqui
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
@@ -56,9 +56,11 @@ const handler = NextAuth({
     },
   },
   pages: {
-    signIn: "/login",  // 👈 só essa
+    signIn: "/login",
     error: "/login",
   },
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
