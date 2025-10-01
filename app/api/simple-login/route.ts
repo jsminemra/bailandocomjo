@@ -1,38 +1,31 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma'; 
 import { cookies } from 'next/headers';
-
-const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
-    const { name, email } = await request.json();
+    const { email } = await request.json();
 
-    if (!name || !email) {
+    if (!email) {
       return NextResponse.json(
-        { error: 'Nome e e-mail são obrigatórios' },
+        { error: 'E-mail é obrigatório' },
         { status: 400 }
       );
     }
 
-    // Busca o usuário no banco de dados
-    const user = await prisma.user.findFirst({
-      where: {
-        AND: [
-          { name: name.toLowerCase() },
-          { email: email.toLowerCase() }
-        ]
-      }
+    // Busca usuário apenas pelo email
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
     });
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Usuário não encontrado. Verifique seus dados.' },
+        { error: 'Usuário não encontrado. Verifique o e-mail.' },
         { status: 401 }
       );
     }
 
-    // Define um cookie de sessão simples
+    // Define cookie de sessão simples
     const cookieStore = await cookies();
     cookieStore.set('userId', user.id, {
       httpOnly: true,
