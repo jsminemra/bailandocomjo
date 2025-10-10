@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     const workoutLocation = localParam || user.workoutLocation || 'casa';
     const experienceLevel = user.experienceLevel || 'iniciante';
-    const focusArea = 'corpo_todo'; // Valor padrão já que o campo não existe
+    const focusArea = 'corpo_todo';
 
     let frequency = 4; // intermediário (padrão)
     if (experienceLevel === 'iniciante') frequency = 3;
@@ -72,32 +72,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(personalizeWorkout(template, focusArea));
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-    console.error('Erro ao personalizar treino:', errorMessage);
+    console.error('Erro ao personalizar treino:', error);
     return NextResponse.json({ error: 'Erro ao gerar treino personalizado' }, { status: 500 });
   }
 }
 
-function personalizeWorkout(template: unknown, focusArea: string): unknown {
+function personalizeWorkout(template: any, focusArea: string) {
   if (focusArea === 'corpo_todo') return template;
 
   const targetMuscles = FOCUS_TO_MUSCLE_GROUPS[focusArea] || [];
   const personalized = JSON.parse(JSON.stringify(template));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   personalized.days = personalized.days.map((day: any) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const focusExercises = day.exercises.filter((ex: any) => 
       targetMuscles.some(muscle => ex.muscleGroup.toLowerCase().includes(muscle))
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const otherExercises = day.exercises.filter((ex: any) => 
       !targetMuscles.some(muscle => ex.muscleGroup.toLowerCase().includes(muscle))
     );
 
     if (focusExercises.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const boostedFocusExercises = focusExercises.map((ex: any) => ({
         ...ex,
         sets: ex.sets + 1,
