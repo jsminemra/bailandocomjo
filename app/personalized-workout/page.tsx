@@ -39,7 +39,7 @@ interface WorkoutTemplate {
   description?: string;
   location: string;
   days: WorkoutDay[];
-  __personalization?: PersonalizationMeta; // ← adicionamos isso
+  __personalization?: PersonalizationMeta; // metadados vindos da API
 }
 
 const LABELS: Record<string, string> = {
@@ -68,6 +68,7 @@ export default function PersonalizedWorkout() {
 
   useEffect(() => {
     fetchWorkouts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchWorkouts = async () => {
@@ -85,12 +86,12 @@ export default function PersonalizedWorkout() {
       setUserEmail(email);
       setUserName(name);
 
-      const userLocation = userData.workoutLocation || 'casa';
+      const userLocation = (userData.workoutLocation as 'casa' | 'academia') || 'casa';
       setCurrentLocal(userLocation);
 
       const [responseCasa, responseAcademia] = await Promise.all([
         fetch(`/api/personalize-workout?email=${encodeURIComponent(email)}&local=casa`, { cache: 'no-store' }),
-        fetch(`/api/personalize-workout?email=${encodeURIComponent(email)}&local=academia`, { cache: 'no-store' })
+        fetch(`/api/personalize-workout?email=${encodeURIComponent(email)}&local=academia`, { cache: 'no-store' }),
       ]);
 
       if (!responseCasa.ok || !responseAcademia.ok) {
@@ -114,8 +115,8 @@ export default function PersonalizedWorkout() {
       }
 
       setLoading(false);
-    } catch (error) {
-      console.error('Erro ao buscar treinos:', error);
+    } catch (err) {
+      console.error('Erro ao buscar treinos:', err);
       setError('Erro ao carregar seus treinos personalizados');
       setLoading(false);
     }
@@ -137,8 +138,7 @@ export default function PersonalizedWorkout() {
     if (currentWorkout && currentWorkout.days.length > 0) {
       const currentDayNumber = selectedDay?.dayNumber || 1;
       const newDay =
-        currentWorkout.days.find((d) => d.dayNumber === currentDayNumber) ||
-        currentWorkout.days[0];
+        currentWorkout.days.find((d) => d.dayNumber === currentDayNumber) || currentWorkout.days[0];
       setSelectedDay(newDay);
     }
   };
@@ -158,11 +158,11 @@ export default function PersonalizedWorkout() {
           workoutLocation: location,
           workoutGoal: userData.workoutGoal || 'perder_peso',
           experienceLevel: userData.experienceLevel || 'iniciante',
-          focusArea: userData.focusArea || 'corpo_todo'
-        })
+          focusArea: userData.focusArea || 'corpo_todo',
+        }),
       });
-    } catch (error) {
-      console.error('Erro ao atualizar local:', error);
+    } catch (err) {
+      console.error('Erro ao atualizar local:', err);
     }
   };
 
@@ -230,7 +230,7 @@ export default function PersonalizedWorkout() {
 
   const currentWorkout = currentLocal === 'casa' ? workoutCasa : workoutAcademia;
 
-  // ===== Badge de Personalização (usa o template do local atual) =====
+  // Badge de Personalização (usa o template do local atual)
   const badgeText = useMemo(() => {
     const meta = currentWorkout?.__personalization;
     if (!meta?.applied) return null;
@@ -238,7 +238,7 @@ export default function PersonalizedWorkout() {
     const foco = meta.focusArea ? (LABELS[meta.focusArea] || meta.focusArea) : 'Foco';
     const goal = meta.workoutGoal ? (LABELS[meta.workoutGoal] || meta.workoutGoal) : null;
     return `Foco: ${foco} (+${pct}% reps)` + (goal ? ` • Objetivo: ${goal}` : '');
-  }, [currentWorkout]);
+  }, [currentWorkout?.__personalization]);
 
   if (loading) {
     return (
