@@ -1,6 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+
+type ExerciseStatus = 'not-started' | 'in-progress' | 'completed';
+
+interface PersonalizationMeta {
+  applied: boolean;
+  focusArea: string | null;
+  workoutGoal: string | null;
+  repsFactor: number; // ex.: 1.15
+}
 
 interface Exercise {
   id: string;
@@ -12,7 +21,7 @@ interface Exercise {
   muscleGroup: string;
   equipment?: string;
   order: number;
-  videoUrls?: string[];  // ← MUDOU: agora é array
+  videoUrls?: string[]; // array OK
 }
 
 interface WorkoutDay {
@@ -30,9 +39,21 @@ interface WorkoutTemplate {
   description?: string;
   location: string;
   days: WorkoutDay[];
+  __personalization?: PersonalizationMeta; // ← adicionamos isso
 }
 
-type ExerciseStatus = 'not-started' | 'in-progress' | 'completed';
+const LABELS: Record<string, string> = {
+  ganhar_massa: 'Ganhar Massa',
+  definir_musculos: 'Definição',
+  perder_peso: 'Perder Peso',
+  melhorar_condicionamento: 'Condicionamento',
+  gluteos: 'Glúteos',
+  abdomen: 'Abdômen',
+  pernas: 'Pernas',
+  bracos: 'Braços',
+  ombros: 'Ombros',
+  corpo_todo: 'Corpo Todo',
+};
 
 export default function PersonalizedWorkout() {
   const [workoutCasa, setWorkoutCasa] = useState<WorkoutTemplate | null>(null);
@@ -68,30 +89,30 @@ export default function PersonalizedWorkout() {
       setCurrentLocal(userLocation);
 
       const [responseCasa, responseAcademia] = await Promise.all([
-        fetch(`/api/personalize-workout?email=${encodeURIComponent(email)}&local=casa`),
-        fetch(`/api/personalize-workout?email=${encodeURIComponent(email)}&local=academia`)
+        fetch(`/api/personalize-workout?email=${encodeURIComponent(email)}&local=casa`, { cache: 'no-store' }),
+        fetch(`/api/personalize-workout?email=${encodeURIComponent(email)}&local=academia`, { cache: 'no-store' })
       ]);
-      
+
       if (!responseCasa.ok || !responseAcademia.ok) {
         throw new Error('Erro ao carregar treinos');
       }
 
-      const workoutDataCasa = await responseCasa.json();
-      const workoutDataAcademia = await responseAcademia.json();
-      
+      const workoutDataCasa: WorkoutTemplate = await responseCasa.json();
+      const workoutDataAcademia: WorkoutTemplate = await responseAcademia.json();
+
       setWorkoutCasa(workoutDataCasa);
       setWorkoutAcademia(workoutDataAcademia);
-      
+
       const currentWorkout = userLocation === 'casa' ? workoutDataCasa : workoutDataAcademia;
       if (currentWorkout.days && currentWorkout.days.length > 0) {
         setSelectedDay(currentWorkout.days[0]);
       }
-      
+
       const savedStatus = sessionStorage.getItem('exerciseStatus');
       if (savedStatus) {
         setExerciseStatus(JSON.parse(savedStatus));
       }
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Erro ao buscar treinos:', error);
@@ -102,7 +123,7 @@ export default function PersonalizedWorkout() {
 
   const handleLocalChange = (newLocal: 'casa' | 'academia') => {
     setCurrentLocal(newLocal);
-    
+
     const userDataString = sessionStorage.getItem('user');
     if (userDataString) {
       const userData = JSON.parse(userDataString);
@@ -111,12 +132,13 @@ export default function PersonalizedWorkout() {
     }
 
     updateUserLocation(newLocal);
-    
+
     const currentWorkout = newLocal === 'casa' ? workoutCasa : workoutAcademia;
     if (currentWorkout && currentWorkout.days.length > 0) {
       const currentDayNumber = selectedDay?.dayNumber || 1;
-      const newDay = currentWorkout.days.find(d => d.dayNumber === currentDayNumber) 
-                    || currentWorkout.days[0];
+      const newDay =
+        currentWorkout.days.find((d) => d.dayNumber === currentDayNumber) ||
+        currentWorkout.days[0];
       setSelectedDay(newDay);
     }
   };
@@ -125,9 +147,9 @@ export default function PersonalizedWorkout() {
     try {
       const userDataString = sessionStorage.getItem('user');
       if (!userDataString) return;
-      
+
       const userData = JSON.parse(userDataString);
-      
+
       await fetch('/api/quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -148,19 +170,11 @@ export default function PersonalizedWorkout() {
     const currentStatus = exerciseStatus[exerciseId] || 'not-started';
     let newStatus: ExerciseStatus;
 
-    if (currentStatus === 'not-started') {
-      newStatus = 'in-progress';
-    } else if (currentStatus === 'in-progress') {
-      newStatus = 'completed';
-    } else {
-      newStatus = 'not-started';
-    }
+    if (currentStatus === 'not-started') newStatus = 'in-progress';
+    else if (currentStatus === 'in-progress') newStatus = 'completed';
+    else newStatus = 'not-started';
 
-    const updatedStatus = {
-      ...exerciseStatus,
-      [exerciseId]: newStatus
-    };
-
+    const updatedStatus = { ...exerciseStatus, [exerciseId]: newStatus };
     setExerciseStatus(updatedStatus);
     sessionStorage.setItem('exerciseStatus', JSON.stringify(updatedStatus));
   };
@@ -168,26 +182,11 @@ export default function PersonalizedWorkout() {
   const getStatusConfig = (status: ExerciseStatus) => {
     switch (status) {
       case 'not-started':
-        return {
-          label: 'Não Iniciado',
-          bgColor: 'bg-[#333]',
-          hoverColor: 'hover:bg-[#444]',
-          textColor: 'text-gray-300'
-        };
+        return { label: 'Não Iniciado', bgColor: 'bg-[#333]', hoverColor: 'hover:bg-[#444]', textColor: 'text-gray-300' };
       case 'in-progress':
-        return {
-          label: 'Em Andamento',
-          bgColor: 'bg-yellow-600',
-          hoverColor: 'hover:bg-yellow-700',
-          textColor: 'text-white'
-        };
+        return { label: 'Em Andamento', bgColor: 'bg-yellow-600', hoverColor: 'hover:bg-yellow-700', textColor: 'text-white' };
       case 'completed':
-        return {
-          label: 'Finalizado',
-          bgColor: 'bg-[#e8048c]',
-          hoverColor: 'hover:bg-[#d1037a]',
-          textColor: 'text-white'
-        };
+        return { label: 'Finalizado', bgColor: 'bg-[#e8048c]', hoverColor: 'hover:bg-[#d1037a]', textColor: 'text-white' };
     }
   };
 
@@ -196,9 +195,7 @@ export default function PersonalizedWorkout() {
   };
 
   const formatRestTime = (seconds: number): string => {
-    if (seconds >= 60) {
-      return `${Math.floor(seconds / 60)}min ${seconds % 60}s`;
-    }
+    if (seconds >= 60) return `${Math.floor(seconds / 60)}min ${seconds % 60}s`;
     return `${seconds}s`;
   };
 
@@ -231,6 +228,18 @@ export default function PersonalizedWorkout() {
     return 'Treino';
   };
 
+  const currentWorkout = currentLocal === 'casa' ? workoutCasa : workoutAcademia;
+
+  // ===== Badge de Personalização (usa o template do local atual) =====
+  const badgeText = useMemo(() => {
+    const meta = currentWorkout?.__personalization;
+    if (!meta?.applied) return null;
+    const pct = Math.round((meta.repsFactor - 1) * 100); // ex.: 15%
+    const foco = meta.focusArea ? (LABELS[meta.focusArea] || meta.focusArea) : 'Foco';
+    const goal = meta.workoutGoal ? (LABELS[meta.workoutGoal] || meta.workoutGoal) : null;
+    return `Foco: ${foco} (+${pct}% reps)` + (goal ? ` • Objetivo: ${goal}` : '');
+  }, [currentWorkout]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#111] flex items-center justify-center">
@@ -243,13 +252,13 @@ export default function PersonalizedWorkout() {
     );
   }
 
-  if (error || !workoutCasa || !workoutAcademia) {
+  if (error || !workoutCasa || !workoutAcademia || !currentWorkout) {
     return (
       <div className="min-h-screen bg-[#111] flex items-center justify-center p-5">
         <div className="w-full max-w-[400px] text-white text-center">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
           <h1 className="text-2xl font-bold mb-4">Ops, algo deu errado!</h1>
-          <p className="text-gray-300 mb-6">{error}</p>
+          <p className="text-gray-300 mb-6">{error || 'Não foi possível carregar seus treinos.'}</p>
           <button
             onClick={handleBackToHome}
             className="bg-[#22C55E] hover:bg-[#16A34A] text-white font-bold py-3 px-6 rounded-lg transition-colors"
@@ -261,37 +270,37 @@ export default function PersonalizedWorkout() {
     );
   }
 
-  if (!selectedDay) {
-    return null;
-  }
-
-  const currentWorkout = currentLocal === 'casa' ? workoutCasa : workoutAcademia;
+  if (!selectedDay) return null;
 
   return (
     <div className="min-h-screen bg-[#111] text-white">
       <div className="w-full max-w-[400px] mx-auto">
-        
         {/* Header */}
         <div className="p-4 border-b border-gray-800">
-          <button 
-            onClick={handleBackToHome}
-            className="text-gray-400 mb-4 flex items-center"
-          >
+          <button onClick={handleBackToHome} className="text-gray-400 mb-4 flex items-center">
             &lt; Voltar
           </button>
-          
+
           <div className="mb-2">
             <span className="text-gray-400 text-sm">
-             Treino {currentWorkout.level.charAt(0).toUpperCase() + currentWorkout.level.slice(1)} - Treino {currentWorkout.frequency}x Semana
+              Treino {currentWorkout.level.charAt(0).toUpperCase() + currentWorkout.level.slice(1)} - Treino {currentWorkout.frequency}x Semana
             </span>
           </div>
-          
+
           <h1 className="text-2xl font-bold mb-2">
             {currentLocal === 'casa' ? 'Treino em Casa' : 'Academia'}
           </h1>
-          <p className="text-gray-400 text-sm mb-4">
+          <p className="text-gray-400 text-sm">
             Olá, {userName}! Aqui está sua divisão da semana:
           </p>
+
+          {/* BADGE de Personalização */}
+          {badgeText && (
+            <div className="mt-3 inline-flex items-center gap-2 bg-[#151515] border border-[#2a2a2a] text-[#22C55E] px-3 py-1.5 rounded-full text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+              {badgeText}
+            </div>
+          )}
         </div>
 
         {/* Seletor Casa/Academia */}
@@ -300,9 +309,7 @@ export default function PersonalizedWorkout() {
             <button
               onClick={() => handleLocalChange('casa')}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                currentLocal === 'casa'
-                  ? 'bg-[#22C55E] text-white'
-                  : 'text-gray-400 hover:text-white'
+                currentLocal === 'casa' ? 'bg-[#22C55E] text-white' : 'text-gray-400 hover:text-white'
               }`}
             >
               Casa
@@ -310,9 +317,7 @@ export default function PersonalizedWorkout() {
             <button
               onClick={() => handleLocalChange('academia')}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                currentLocal === 'academia'
-                  ? 'bg-[#22C55E] text-white'
-                  : 'text-gray-400 hover:text-white'
+                currentLocal === 'academia' ? 'bg-[#22C55E] text-white' : 'text-gray-400 hover:text-white'
               }`}
             >
               Academia
@@ -326,7 +331,7 @@ export default function PersonalizedWorkout() {
             <select
               value={selectedDay.id}
               onChange={(e) => {
-                const day = currentWorkout.days.find(d => d.id === e.target.value);
+                const day = currentWorkout.days.find((d) => d.id === e.target.value);
                 if (day) setSelectedDay(day);
               }}
               className="w-full bg-[#333] text-white p-3 rounded-lg border border-gray-600 appearance-none cursor-pointer"
@@ -337,9 +342,7 @@ export default function PersonalizedWorkout() {
                 </option>
               ))}
             </select>
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-              ▼
-            </div>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">▼</div>
           </div>
         </div>
 
@@ -351,7 +354,6 @@ export default function PersonalizedWorkout() {
 
             return (
               <div key={exercise.id} className="bg-[#222] rounded-lg p-4 mb-3">
-                
                 {/* Exercise Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
@@ -382,21 +384,19 @@ export default function PersonalizedWorkout() {
                   <span>Descanso: {formatRestTime(exercise.restSeconds)}</span>
                 </div>
 
-                {/* Action Buttons - ATUALIZADO PARA MÚLTIPLOS VÍDEOS */}
+                {/* Vídeos + Status */}
                 <div className="flex gap-2 flex-wrap">
                   {exercise.videoUrls && exercise.videoUrls.length > 0 && (
                     exercise.videoUrls.length === 1 ? (
-                      // Só 1 vídeo - botão único
-                      <button 
+                      <button
                         className="flex-1 min-w-[140px] bg-[#e8048c] hover:bg-[#d1037a] text-white py-2 px-3 rounded text-sm transition-colors font-bold"
                         onClick={() => window.open(exercise.videoUrls![0], '_blank')}
                       >
                         ▶ VER EXECUÇÃO
                       </button>
                     ) : (
-                      // Múltiplos vídeos - botões numerados
                       exercise.videoUrls.map((url, index) => (
-                        <button 
+                        <button
                           key={index}
                           className="flex-1 min-w-[100px] bg-[#e8048c] hover:bg-[#d1037a] text-white py-2 px-3 rounded text-sm transition-colors font-bold"
                           onClick={() => window.open(url, '_blank')}
@@ -406,7 +406,7 @@ export default function PersonalizedWorkout() {
                       ))
                     )
                   )}
-                  <button 
+                  <button
                     className={`flex-1 min-w-[120px] ${statusConfig.bgColor} ${statusConfig.hoverColor} ${statusConfig.textColor} py-2 px-3 rounded text-sm transition-colors`}
                     onClick={() => handleExerciseStatusChange(exercise.id)}
                   >
@@ -426,16 +426,12 @@ export default function PersonalizedWorkout() {
           >
             Menu Principal
           </button>
-
-          {/* Progress Info */}
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-500">
-              {currentLocal === 'casa' ? '🏠 Treino em Casa' : '🏋️ Treino na Academia'} • 
-              Dia {selectedDay.dayNumber} de {currentWorkout.frequency} • {selectedDay.exercises.length} exercícios
+              {currentLocal === 'casa' ? '🏠 Treino em Casa' : '🏋️ Treino na Academia'} • Dia {selectedDay.dayNumber} de {currentWorkout.frequency} • {selectedDay.exercises.length} exercícios
             </p>
           </div>
         </div>
-
       </div>
     </div>
   );
