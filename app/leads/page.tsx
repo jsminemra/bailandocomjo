@@ -1,60 +1,124 @@
-export const dynamic = "force-dynamic";
+// app/api/leads/route.ts
+// Endpoint para receber dados do InLead via webhook
+
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export default async function LeadsPage() {
-  const leads = await prisma.lead.findMany({
-    orderBy: {
-      createdAt: 'desc'
-    }
-  });
+export async function POST(request: NextRequest) {
+  try {
+    // Pegar dados do InLead (vem como formData)
+    const formData = await request.formData();
+    
+    // Converter formData para objeto
+    const data: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      data[key] = value.toString();
+    });
 
-  return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Leads Capturados</h1>
-      
-      <div className="mb-4 text-sm text-gray-600">
-        Total de leads: {leads.length}
-      </div>
-      
-      <div className="grid gap-4">
-        {leads.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            Nenhum lead capturado ainda
-          </div>
-        ) : (
-          leads.map((lead) => (
-            <div key={lead.id} className="border p-4 rounded-lg bg-white shadow-sm">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-semibold text-lg">{lead.name}</h3>
-                <span className={`px-2 py-1 rounded text-xs ${
-                  lead.leadStatus === 'new' ? 'bg-green-100 text-green-800' :
-                  lead.leadStatus === 'contacted' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {lead.leadStatus}
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p><span className="font-medium">Email:</span> {lead.email || 'Não informado'}</p>
-                  <p><span className="font-medium">Idade:</span> {lead.age || 'Não informada'}</p>
-                  <p><span className="font-medium">Fonte:</span> {lead.source}</p>
-                </div>
-                <div>
-                  <p><span className="font-medium">Objetivo:</span> {lead.goal || 'Não informado'}</p>
-                  <p><span className="font-medium">Biotipo:</span> {lead.bodyType || 'Não informado'}</p>
-                  <p><span className="font-medium">Meta corporal:</span> {lead.bodyGoal || 'Não informada'}</p>
-                </div>
-              </div>
-              
-              <p className="text-xs text-gray-500 mt-3">
-                Capturado em: {new Date(lead.createdAt).toLocaleString('pt-BR')}
-              </p>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
+    console.log('📥 Dados recebidos do InLead:', data);
+
+    // Validar campos obrigatórios
+    if (!data.email || !data.nome) {
+      console.error('❌ Email ou nome faltando:', data);
+      return NextResponse.json(
+        { error: 'Email e nome são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    // Normalizar dados
+    const email = data.email.toLowerCase().trim();
+    const name = data.nome.trim();
+
+    // 1. VERIFICAR SE LEAD JÁ EXISTE (usando findFirst por segurança)
+    const existingLead = await prisma.lead.findFirst({
+      where: { email }
+    });
+
+    let lead;
+    
+    if (existingLead) {
+      // Atualizar lead existente
+      lead = await prisma.lead.update({
+        where: { id: existingLead.id },
+        data: {
+          name,
+          source: 'inlead',
+          updatedAt: new Date(),
+        }
+      });
+      console.log('✅ Lead atualizado:', lead.id);
+    } else {
+      // Criar novo lead
+      lead = await prisma.lead.create({
+        data: {
+          email,
+          name,
+          source: 'inlead',
+          leadStatus: 'new',
+        }
+      });
+      console.log('✅ Lead criado:', lead.id);
+    }
+
+    // 2. CRIAR/ATUALIZAR USUÁRIO (para permitir login)
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {
+        name,
+        updatedAt: new Date(),
+        // Se já existir, mantém os dados dele
+      },
+      create: {
+        email,
+        name,
+        platform: 'inlead', // 🔑 Importante para o login funcionar
+        subscriptionStatus: 'trial', // Começa em trial
+        trialStartDate: new Date(),
+        hasCompletedQuiz: false, // Vai completar dentro do app
+      },
+    });
+
+    console.log('✅ Usuário criado/atualizado:', user.id);
+
+    // 3. VINCULAR LEAD AO USUÁRIO (se ainda não estiver vinculado)
+    if (!lead.userId) {
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: {
+          userId: user.id,
+        },
+      });
+      console.log('✅ Lead vinculado ao usuário');
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Lead processado com sucesso',
+      leadId: lead.id,
+      userId: user.id,
+      email: user.email,
+    });
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    console.error('❌ Erro ao processar lead do InLead:', errorMessage);
+    
+    return NextResponse.json(
+      { 
+        error: 'Erro ao processar lead',
+        details: errorMessage 
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// Permitir GET para testar se endpoint está online
+export async function GET() {
+  return NextResponse.json({
+    status: 'online',
+    message: 'Endpoint do InLead funcionando',
+    timestamp: new Date().toISOString(),
+  });
 }
