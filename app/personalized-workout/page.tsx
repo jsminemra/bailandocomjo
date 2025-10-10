@@ -12,7 +12,7 @@ interface Exercise {
   muscleGroup: string;
   equipment?: string;
   order: number;
-  videoUrl?: string;
+  videoUrls?: string[];  // ← MUDOU: agora é array
 }
 
 interface WorkoutDay {
@@ -42,75 +42,75 @@ export default function PersonalizedWorkout() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [exerciseStatus, setExerciseStatus] = useState<Record<string, ExerciseStatus>>({});
 
   useEffect(() => {
-    const fetchWorkouts = async () => {
-      try {
-        const userEmail = getCurrentUserEmail();
-        const urlParams = new URLSearchParams(window.location.search);
-        const level = urlParams.get('level') || 'iniciante';
-        const frequency = urlParams.get('frequency') || '5';
-
-        let apiUrlCasa = '/api/get-workout';
-        if (userEmail) {
-          apiUrlCasa += `?email=${encodeURIComponent(userEmail)}&local=casa`;
-        } else {
-          apiUrlCasa += `?level=${level}&frequency=${frequency}&local=casa`;
-        }
-
-        let apiUrlAcademia = '/api/get-workout';
-        if (userEmail) {
-          apiUrlAcademia += `?email=${encodeURIComponent(userEmail)}&local=academia`;
-        } else {
-          apiUrlAcademia += `?level=${level}&frequency=${frequency}&local=academia`;
-        }
-
-        const [responseCasa, responseAcademia] = await Promise.all([
-          fetch(apiUrlCasa),
-          fetch(apiUrlAcademia)
-        ]);
-        
-        if (!responseCasa.ok || !responseAcademia.ok) {
-          throw new Error('Erro ao carregar treinos');
-        }
-
-        const workoutDataCasa = await responseCasa.json();
-        const workoutDataAcademia = await responseAcademia.json();
-        
-        setWorkoutCasa(workoutDataCasa);
-        setWorkoutAcademia(workoutDataAcademia);
-        
-        if (workoutDataCasa.days && workoutDataCasa.days.length > 0) {
-          setSelectedDay(workoutDataCasa.days[0]);
-        }
-        
-        // Carregar status dos exercícios do localStorage
-        const savedStatus = localStorage.getItem('exerciseStatus');
-        if (savedStatus) {
-          setExerciseStatus(JSON.parse(savedStatus));
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Erro ao buscar treinos:', error);
-        setError('Erro ao carregar seus treinos personalizados');
-        setLoading(false);
-      }
-    };
-
     fetchWorkouts();
-    
-    const storedName = localStorage.getItem('userName') || 'Aluna';
-    setUserName(storedName);
   }, []);
 
-  const getCurrentUserEmail = (): string | null => {
-    return localStorage.getItem('userEmail');
+  const fetchWorkouts = async () => {
+    try {
+      const userDataString = sessionStorage.getItem('user');
+      if (!userDataString) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const userData = JSON.parse(userDataString);
+      const email = userData.email;
+      const name = userData.name || 'Aluna';
+
+      setUserEmail(email);
+      setUserName(name);
+
+      const userLocation = userData.workoutLocation || 'casa';
+      setCurrentLocal(userLocation);
+
+      const [responseCasa, responseAcademia] = await Promise.all([
+        fetch(`/api/personalize-workout?email=${encodeURIComponent(email)}&local=casa`),
+        fetch(`/api/personalize-workout?email=${encodeURIComponent(email)}&local=academia`)
+      ]);
+      
+      if (!responseCasa.ok || !responseAcademia.ok) {
+        throw new Error('Erro ao carregar treinos');
+      }
+
+      const workoutDataCasa = await responseCasa.json();
+      const workoutDataAcademia = await responseAcademia.json();
+      
+      setWorkoutCasa(workoutDataCasa);
+      setWorkoutAcademia(workoutDataAcademia);
+      
+      const currentWorkout = userLocation === 'casa' ? workoutDataCasa : workoutDataAcademia;
+      if (currentWorkout.days && currentWorkout.days.length > 0) {
+        setSelectedDay(currentWorkout.days[0]);
+      }
+      
+      const savedStatus = sessionStorage.getItem('exerciseStatus');
+      if (savedStatus) {
+        setExerciseStatus(JSON.parse(savedStatus));
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Erro ao buscar treinos:', error);
+      setError('Erro ao carregar seus treinos personalizados');
+      setLoading(false);
+    }
   };
 
   const handleLocalChange = (newLocal: 'casa' | 'academia') => {
     setCurrentLocal(newLocal);
+    
+    const userDataString = sessionStorage.getItem('user');
+    if (userDataString) {
+      const userData = JSON.parse(userDataString);
+      userData.workoutLocation = newLocal;
+      sessionStorage.setItem('user', JSON.stringify(userData));
+    }
+
+    updateUserLocation(newLocal);
     
     const currentWorkout = newLocal === 'casa' ? workoutCasa : workoutAcademia;
     if (currentWorkout && currentWorkout.days.length > 0) {
@@ -118,6 +118,29 @@ export default function PersonalizedWorkout() {
       const newDay = currentWorkout.days.find(d => d.dayNumber === currentDayNumber) 
                     || currentWorkout.days[0];
       setSelectedDay(newDay);
+    }
+  };
+
+  const updateUserLocation = async (location: string) => {
+    try {
+      const userDataString = sessionStorage.getItem('user');
+      if (!userDataString) return;
+      
+      const userData = JSON.parse(userDataString);
+      
+      await fetch('/api/quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          workoutLocation: location,
+          workoutGoal: userData.workoutGoal || 'perder_peso',
+          experienceLevel: userData.experienceLevel || 'iniciante',
+          focusArea: userData.focusArea || 'corpo_todo'
+        })
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar local:', error);
     }
   };
 
@@ -139,7 +162,7 @@ export default function PersonalizedWorkout() {
     };
 
     setExerciseStatus(updatedStatus);
-    localStorage.setItem('exerciseStatus', JSON.stringify(updatedStatus));
+    sessionStorage.setItem('exerciseStatus', JSON.stringify(updatedStatus));
   };
 
   const getStatusConfig = (status: ExerciseStatus) => {
@@ -359,22 +382,32 @@ export default function PersonalizedWorkout() {
                   <span>Descanso: {formatRestTime(exercise.restSeconds)}</span>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  {exercise.videoUrl && (
-                    <button 
-                      className="flex-1 bg-[#e8048c] hover:bg-[#d1037a] text-white py-2 px-3 rounded text-sm transition-colors font-bold"
-                      onClick={() => {
-                        if (exercise.videoUrl) {
-                          window.open(exercise.videoUrl, '_blank');
-                        }
-                      }}
-                    >
-                      ▶ VER EXECUÇÃO
-                    </button>
+                {/* Action Buttons - ATUALIZADO PARA MÚLTIPLOS VÍDEOS */}
+                <div className="flex gap-2 flex-wrap">
+                  {exercise.videoUrls && exercise.videoUrls.length > 0 && (
+                    exercise.videoUrls.length === 1 ? (
+                      // Só 1 vídeo - botão único
+                      <button 
+                        className="flex-1 min-w-[140px] bg-[#e8048c] hover:bg-[#d1037a] text-white py-2 px-3 rounded text-sm transition-colors font-bold"
+                        onClick={() => window.open(exercise.videoUrls![0], '_blank')}
+                      >
+                        ▶ VER EXECUÇÃO
+                      </button>
+                    ) : (
+                      // Múltiplos vídeos - botões numerados
+                      exercise.videoUrls.map((url, index) => (
+                        <button 
+                          key={index}
+                          className="flex-1 min-w-[100px] bg-[#e8048c] hover:bg-[#d1037a] text-white py-2 px-3 rounded text-sm transition-colors font-bold"
+                          onClick={() => window.open(url, '_blank')}
+                        >
+                          ▶ VÍD {index + 1}
+                        </button>
+                      ))
+                    )
                   )}
                   <button 
-                    className={`flex-1 ${statusConfig.bgColor} ${statusConfig.hoverColor} ${statusConfig.textColor} py-2 px-3 rounded text-sm transition-colors`}
+                    className={`flex-1 min-w-[120px] ${statusConfig.bgColor} ${statusConfig.hoverColor} ${statusConfig.textColor} py-2 px-3 rounded text-sm transition-colors`}
                     onClick={() => handleExerciseStatusChange(exercise.id)}
                   >
                     {statusConfig.label}

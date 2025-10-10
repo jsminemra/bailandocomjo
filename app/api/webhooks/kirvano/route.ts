@@ -29,11 +29,6 @@ export async function POST(req: NextRequest) {
 
     const customer = body.customer;
 
-    // Buscar lead existente para pegar dados do Inlead
-    const existingLead = await prisma.lead.findFirst({
-      where: { email: customer.email }
-    });
-
     let user = await prisma.user.findUnique({
       where: { email: customer.email }
     });
@@ -48,18 +43,12 @@ export async function POST(req: NextRequest) {
           purchaseDate: new Date(body.created_at),
           subscriptionStatus: 'active',
           trialEndDate: null,
-          phone: customer.phone,
-          // Se tem lead, atualizar dados
-          ...(existingLead && {
-            experienceLevel: existingLead.experienceLevel || 'iniciante',
-            weeklyFrequency: 5,
-            workoutGoal: existingLead.goal,
-            hasCompletedQuiz: true
-          })
+          phone: customer.phone
+          // NÃO atualizar dados do quiz se usuário já existe
         }
       });
     } else {
-      // Criar novo usuário
+      // Criar novo usuário - SEM quiz completo
       user = await prisma.user.create({
         data: {
           email: customer.email,
@@ -70,23 +59,8 @@ export async function POST(req: NextRequest) {
           purchaseDate: new Date(body.created_at),
           subscriptionStatus: 'active',
           trialEndDate: null,
-          // Se tem lead do Inlead, usar os dados
-          experienceLevel: existingLead?.experienceLevel || 'iniciante',
-          weeklyFrequency: 5,
-          workoutGoal: existingLead?.goal,
-          workoutLocation: 'casa',
-          hasCompletedQuiz: existingLead ? true : false
-        }
-      });
-    }
-
-    // Vincular lead ao usuário se existir
-    if (existingLead) {
-      await prisma.lead.update({
-        where: { id: existingLead.id },
-        data: { 
-          userId: user.id,
-          leadStatus: 'converted'
+          hasCompletedQuiz: false, // IMPORTANTE: Forçar quiz no primeiro acesso
+          workoutLocation: 'casa' // Padrão inicial
         }
       });
     }

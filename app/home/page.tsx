@@ -12,7 +12,7 @@ export default function Home() {
     loadUserData();
   }, []);
 
-  const loadUserData = () => {
+  const loadUserData = async () => {
     try {
       const userDataString = sessionStorage.getItem('user');
       
@@ -20,15 +20,50 @@ export default function Home() {
         const userData = JSON.parse(userDataString);
         setNome(userData.name || 'usuária');
         setEmail(userData.email || '');
+
+        // NOVA LÓGICA: Verificar se completou o quiz
+        await checkQuizStatus(userData.email);
+        
+        setLoading(false);
       } else {
         // Se não tem usuário logado, redireciona para login
         window.location.href = '/login';
       }
       
-      setLoading(false);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       setLoading(false);
+    }
+  };
+
+  const checkQuizStatus = async (userEmail: string) => {
+    try {
+      const response = await fetch(`/api/quiz?email=${encodeURIComponent(userEmail)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Se não completou o quiz, redireciona OBRIGATORIAMENTE
+        if (!data.user.hasCompletedQuiz) {
+          window.location.href = '/quiz';
+          return;
+        }
+        
+        // Atualizar dados do usuário no sessionStorage com info do quiz
+        const userDataString = sessionStorage.getItem('user');
+        if (userDataString) {
+          const userData = JSON.parse(userDataString);
+          userData.hasCompletedQuiz = data.user.hasCompletedQuiz;
+          userData.workoutGoal = data.user.workoutGoal;
+          userData.workoutLocation = data.user.workoutLocation;
+          userData.experienceLevel = data.user.experienceLevel;
+          userData.focusArea = data.user.focusArea;
+          sessionStorage.setItem('user', JSON.stringify(userData));
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar quiz:', error);
+      // Em caso de erro, não bloqueia o acesso
     }
   };
 

@@ -8,20 +8,20 @@ datasource db {
 }
 
 model User {
-  id                 String            @id @default(cuid())
-  email              String            @unique
+  id                 String               @id @default(cuid())
+  email              String               @unique
   name               String?
   phone              String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   platform           String?
   purchaseId         String?
   purchaseDate       DateTime?
-  subscriptionStatus String            @default("trial")
-  trialStartDate     DateTime          @default(now())
+  subscriptionStatus String               @default("trial")
+  trialStartDate     DateTime             @default(now())
   trialEndDate       DateTime?
   subscriptionId     String?
-  hasCompletedQuiz   Boolean           @default(false)
+  hasCompletedQuiz   Boolean              @default(false)
   workoutGoal        String?
   experienceLevel    String?
   weeklyFrequency    Int?
@@ -29,64 +29,36 @@ model User {
   sessionDuration    Int?
   limitations        String?
   workoutLocation    String?
+  focusArea          String?
   accounts           Account[]
+  generated_workouts generated_workouts[]
   sessions           Session[]
   workoutProgress    WorkoutProgress[]
-  workouts           Workout[]
 
   @@map("users")
 }
 
-model WorkoutPlan {
-  id          String     @id @default(cuid())
-  name        String
-  description String?
-  duration    Int
-  difficulty  String
-  category    String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  exercises   Exercise[]
-  workouts    Workout[]
-
-  @@map("workout_plans")
-}
-
 model Exercise {
-  id              String            @id @default(cuid())
-  name            String
-  description     String?
-  muscleGroup     String
-  equipment       String?
-  videoUrl        String?
-  imageUrl        String?
-  workoutPlanId   String
-  sets            Int
-  reps            String
-  restTime        Int
-  weight          String?
-  instructions    String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  workoutPlan     WorkoutPlan       @relation(fields: [workoutPlanId], references: [id])
-  workoutProgress WorkoutProgress[]
+  id                         String                       @id @default(cuid())
+  name                       String
+  equipment                  String?
+  videoUrl                   String?
+  difficulty                 String?
+  location                   String?
+  targetMuscle               String?
+  description                String?
+  imageUrl                   String?
+  instructions               String?
+  muscleGroup                String?
+  reps                       String?
+  restTime                   Int?
+  sets                       Int?
+  weight                     String?
+  workoutPlanId              String?
+  workout_exercise_instances workout_exercise_instances[]
+  workoutProgress            WorkoutProgress[]
 
   @@map("exercises")
-}
-
-model Workout {
-  id            String      @id @default(cuid())
-  userId        String
-  workoutPlanId String
-  scheduledDate DateTime
-  completedDate DateTime?
-  status        String      @default("scheduled")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  user          User        @relation(fields: [userId], references: [id])
-  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id])
-
-  @@map("workouts")
 }
 
 model WorkoutProgress {
@@ -99,7 +71,7 @@ model WorkoutProgress {
   notes         String?
   completedAt   DateTime @default(now())
   exercise      Exercise @relation(fields: [exerciseId], references: [id])
-  user          User     @relation(fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("workout_progress")
 }
@@ -142,6 +114,54 @@ model VerificationToken {
   @@map("verificationtokens")
 }
 
+model Lead {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  age             String?
+  experienceLevel String?
+  goal            String?
+  bodyType        String?
+  bodyGoal        String?
+  source          String?
+  leadStatus      String   @default("new")
+  userId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  workoutLocation String?
+
+  @@map("leads")
+}
+
+model generated_workout_days {
+  id                         String                       @id
+  dayNumber                  Int
+  title                      String
+  generatedWorkoutId         String
+  generated_workouts         generated_workouts           @relation(fields: [generatedWorkoutId], references: [id], onDelete: Cascade)
+  workout_exercise_instances workout_exercise_instances[]
+}
+
+model generated_workouts {
+  id                     String                   @id
+  createdAt              DateTime                 @default(now())
+  userId                 String
+  generated_workout_days generated_workout_days[]
+  users                  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model workout_exercise_instances {
+  id                     String                 @id
+  order                  Int
+  sets                   String
+  reps                   String
+  rest                   String
+  dayId                  String
+  exerciseId             String
+  generated_workout_days generated_workout_days @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  exercises              Exercise               @relation(fields: [exerciseId], references: [id])
+}
+
 model WorkoutTemplate {
   id          String       @id @default(cuid())
   name        String
@@ -178,27 +198,9 @@ model WorkoutExercise {
   instructions String?
   muscleGroup  String
   equipment    String?
-  videoUrl     String?
   order        Int
+  videoUrls    String[]   @default([])
   workoutDay   WorkoutDay @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
 
   @@map("workout_exercises")
-}
-
-model Lead {
-  id              String   @id @default(cuid())
-  name            String
-  email           String?
-  age             String?
-  experienceLevel String?
-  goal            String?
-  bodyType        String?
-  bodyGoal        String?
-  source          String?
-  leadStatus      String   @default("new")
-  userId          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("leads")
 }
