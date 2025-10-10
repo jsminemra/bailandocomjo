@@ -30,23 +30,36 @@ export async function POST(request: NextRequest) {
     const email = data.email.toLowerCase().trim();
     const name = data.nome.trim();
 
-    // 1. SALVAR/ATUALIZAR LEAD
-    const lead = await prisma.lead.upsert({
-      where: { email },
-      update: {
-        name,
-        source: 'inlead',
-        updatedAt: new Date(),
-      },
-      create: {
-        email,
-        name,
-        source: 'inlead',
-        leadStatus: 'new',
-      },
+    // 1. VERIFICAR SE LEAD JÁ EXISTE
+    const existingLead = await prisma.lead.findUnique({
+      where: { email }
     });
 
-    console.log('✅ Lead salvo/atualizado:', lead.id);
+    let lead;
+    
+    if (existingLead) {
+      // Atualizar lead existente
+      lead = await prisma.lead.update({
+        where: { email },
+        data: {
+          name,
+          source: 'inlead',
+          updatedAt: new Date(),
+        }
+      });
+      console.log('✅ Lead atualizado:', lead.id);
+    } else {
+      // Criar novo lead
+      lead = await prisma.lead.create({
+        data: {
+          email,
+          name,
+          source: 'inlead',
+          leadStatus: 'new',
+        }
+      });
+      console.log('✅ Lead criado:', lead.id);
+    }
 
     // 2. CRIAR/ATUALIZAR USUÁRIO (para permitir login)
     const user = await prisma.user.upsert({
@@ -68,15 +81,16 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Usuário criado/atualizado:', user.id);
 
-    // 3. VINCULAR LEAD AO USUÁRIO
-    await prisma.lead.update({
-      where: { id: lead.id },
-      data: {
-        userId: user.id,
-      },
-    });
-
-    console.log('✅ Lead vinculado ao usuário');
+    // 3. VINCULAR LEAD AO USUÁRIO (se ainda não estiver vinculado)
+    if (!lead.userId) {
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: {
+          userId: user.id,
+        },
+      });
+      console.log('✅ Lead vinculado ao usuário');
+    }
 
     return NextResponse.json({
       success: true,
