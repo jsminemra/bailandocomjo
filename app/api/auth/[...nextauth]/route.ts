@@ -4,6 +4,15 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+// Tipos customizados
+interface ExtendedUser {
+  id: string;
+  email: string;
+  name: string;
+  platform?: string | null;
+  hasCompletedQuiz?: boolean;
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -62,9 +71,9 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name || credentials.name || "Usuária",
-          platform: user.platform, // Adiciona platform para uso futuro
-          hasCompletedQuiz: user.hasCompletedQuiz, // Frontend pode usar
-        };
+          platform: user.platform,
+          hasCompletedQuiz: user.hasCompletedQuiz,
+        } as ExtendedUser;
       }
     })
   ],
@@ -74,12 +83,12 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.name = user.name;
-        token.email = user.email;
-        // Adicionar dados extras ao token
-        token.platform = (user as any).platform;
-        token.hasCompletedQuiz = (user as any).hasCompletedQuiz;
+        const extendedUser = user as ExtendedUser;
+        token.id = extendedUser.id;
+        token.name = extendedUser.name;
+        token.email = extendedUser.email;
+        token.platform = extendedUser.platform;
+        token.hasCompletedQuiz = extendedUser.hasCompletedQuiz;
       }
       return token;
     },
@@ -88,9 +97,17 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
-        // Disponibilizar no frontend
-        (session.user as any).platform = token.platform;
-        (session.user as any).hasCompletedQuiz = token.hasCompletedQuiz;
+        
+        // Adicionar propriedades extras de forma type-safe
+        const extendedSession = session as typeof session & {
+          user: typeof session.user & {
+            platform?: string | null;
+            hasCompletedQuiz?: boolean;
+          };
+        };
+        
+        extendedSession.user.platform = token.platform as string | null | undefined;
+        extendedSession.user.hasCompletedQuiz = token.hasCompletedQuiz as boolean | undefined;
       }
       return session;
     },

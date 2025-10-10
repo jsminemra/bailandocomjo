@@ -86,13 +86,14 @@ export async function POST(request: NextRequest) {
       email: user.email,
     });
 
-  } catch (error: any) {
-    console.error('❌ Erro ao processar lead do InLead:', error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    console.error('❌ Erro ao processar lead do InLead:', errorMessage);
     
     return NextResponse.json(
       { 
         error: 'Erro ao processar lead',
-        details: error.message 
+        details: errorMessage 
       },
       { status: 500 }
     );
