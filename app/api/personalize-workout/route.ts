@@ -56,7 +56,6 @@ export async function GET(request: NextRequest) {
       select: {
         experienceLevel: true,
         workoutLocation: true,
-        focusArea: true,
         hasCompletedQuiz: true
       }
     });
@@ -67,7 +66,7 @@ export async function GET(request: NextRequest) {
 
     const workoutLocation = localParam || user.workoutLocation || 'casa';
     const experienceLevel = user.experienceLevel || 'iniciante';
-    const focusArea = user.focusArea || 'corpo_todo';
+    const focusArea = 'corpo_todo'; // Valor padrão já que o campo não existe
 
     let frequency = 4; // intermediário (padrão)
     if (experienceLevel === 'iniciante') frequency = 3;
