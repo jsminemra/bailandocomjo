@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       select: {
         experienceLevel: true,
         workoutLocation: true,
+        focusArea: true,
         hasCompletedQuiz: true
       }
     });
@@ -35,11 +36,11 @@ export async function GET(request: NextRequest) {
 
     const workoutLocation = localParam || user.workoutLocation || 'casa';
     const experienceLevel = user.experienceLevel || 'iniciante';
-    const focusArea = 'corpo_todo';
+    const focusArea = user.focusArea || 'corpo_todo';
 
-    let frequency = 4; // intermediário (padrão)
+    let frequency = 5;
     if (experienceLevel === 'iniciante') frequency = 3;
-    if (experienceLevel === 'avancado') frequency = 5;
+    if (experienceLevel === 'avancado') frequency = 6;
 
     const template = await prisma.workoutTemplate.findFirst({
       where: { level: experienceLevel, location: workoutLocation, frequency: frequency },
