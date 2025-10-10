@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
     const email = data.email.toLowerCase().trim();
     const name = data.nome.trim();
 
-    // 1. VERIFICAR SE LEAD JÁ EXISTE
-    const existingLead = await prisma.lead.findUnique({
+    // 1. VERIFICAR SE LEAD JÁ EXISTE (usando findFirst por segurança)
+    const existingLead = await prisma.lead.findFirst({  // ← findFirst aqui!
       where: { email }
     });
 
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     if (existingLead) {
       // Atualizar lead existente
       lead = await prisma.lead.update({
-        where: { email },
+        where: { id: existingLead.id },
         data: {
           name,
           source: 'inlead',
@@ -67,21 +67,20 @@ export async function POST(request: NextRequest) {
       update: {
         name,
         updatedAt: new Date(),
-        // Se já existir, mantém os dados dele
       },
       create: {
         email,
         name,
-        platform: 'inlead', // 🔑 Importante para o login funcionar
-        subscriptionStatus: 'trial', // Começa em trial
+        platform: 'inlead',
+        subscriptionStatus: 'trial',
         trialStartDate: new Date(),
-        hasCompletedQuiz: false, // Vai completar dentro do app
+        hasCompletedQuiz: false,
       },
     });
 
     console.log('✅ Usuário criado/atualizado:', user.id);
 
-    // 3. VINCULAR LEAD AO USUÁRIO (se ainda não estiver vinculado)
+    // 3. VINCULAR LEAD AO USUÁRIO
     if (!lead.userId) {
       await prisma.lead.update({
         where: { id: lead.id },
@@ -114,7 +113,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Permitir GET para testar se endpoint está online
 export async function GET() {
   return NextResponse.json({
     status: 'online',
