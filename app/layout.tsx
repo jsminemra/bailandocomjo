@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Girl Booster",
-  description: "Seu app de treinos personalizado",
+  title: "Bailando con Jo",
+  description: "Seu app de treinos personalizados",
 };
 
 export default function RootLayout({

@@ -22,7 +22,7 @@ export default function JoChat() {
     {
       id: '1',
       text:
-        'Oi! Eu sou a **Jo**, sua personal trainer virtual do Girl Booster. 💪 ' +
+        'Oi! Eu sou a **Jo**, sua personal trainer virtual. 💪 ' +
         'Pergunte sobre seus treinos, ajustes por nível/foco ou motivação — ' +
         'eu te respondo rapidinho! 😉',
       isUser: false,

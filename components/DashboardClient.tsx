@@ -42,7 +42,7 @@ export default function DashboardClient({ nome, email }: DashboardClientProps) {
               <div className="w-full aspect-[933/621] bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 rounded-[12px] flex items-center justify-center relative">
                 <div className="absolute inset-0 bg-black/20 rounded-[12px]"></div>
                 <div className="text-center text-white z-10">
-                  <div className="text-sm font-bold mb-2">GIRL BOOSTER</div>
+                  <div className="text-sm font-bold mb-2">BAILANDO CON JO</div>
                   <div className="text-xl font-bold mb-2">CLIQUE AQUI</div>
                   <div className="text-xl font-bold mb-1">PARA ACESSAR</div>
                   <div className="text-xl font-bold text-pink-200">SEU TREINO</div>
