@@ -1,17 +1,54 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
-    if (!email) return NextResponse.json({ error: "E-mail obrigatório" }, { status: 400 });
+    const { name, email } = await request.json();
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 401 });
+    if (!name || !email) {
+      return NextResponse.json(
+        { error: "Preencha nome e e-mail." },
+        { status: 400 }
+      );
+    }
 
-    return NextResponse.json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
-  } catch (err) {
-    console.error("Erro no login:", err);
-    return NextResponse.json({ error: "Erro no servidor" }, { status: 500 });
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedName = name.trim();
+
+    // Verifica se já existe o usuário
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        hasCompletedQuiz: true,
+        workoutGoal: true,
+        workoutLocation: true,
+        experienceLevel: true,
+      },
+    });
+
+    if (existingUser) {
+      // Usuário existente → apenas retorna
+      return NextResponse.json({ ok: true, user: existingUser });
+    }
+
+    // Cria novo usuário
+    const newUser = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        name: normalizedName,
+        hasCompletedQuiz: false,
+      },
+    });
+
+    return NextResponse.json({ ok: true, user: newUser });
+  } catch (error) {
+    console.error("Erro no simple-login:", error);
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
   }
 }

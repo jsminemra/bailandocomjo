@@ -17,65 +17,44 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
-      name: "Credenciais",
-      credentials: {
-        name: { label: "Nome", type: "text" },
-        email: { label: "Email", type: "email" }
+  name: "Credenciais",
+  credentials: {
+    name: { label: "Nome", type: "text" },
+    email: { label: "Email", type: "email" }
+  },
+  async authorize(credentials) {
+    // 1) validar dados mínimos
+    const name = String(credentials?.name || "").trim();
+    const email = String(credentials?.email || "").toLowerCase().trim();
+
+    if (!name || !email) {
+      throw new Error("Nome e email são obrigatórios");
+    }
+
+    // 2) upsert: cria se não existir; atualiza nome se existir
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { name },
+      create: { email, name },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        hasCompletedQuiz: true,
+        platform: true,
       },
-      async authorize(credentials) {
-        if (!credentials?.email) {
-          throw new Error("Email é obrigatório");
-        }
+    });
 
-        // Normalizar email
-        const email = credentials.email.toLowerCase().trim();
-
-        // Buscar usuário
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            platform: true,
-            subscriptionStatus: true,
-            hasCompletedQuiz: true,
-          }
-        });
-
-        // VALIDAÇÃO 1: Usuário existe?
-        if (!user) {
-          throw new Error("Usuário não encontrado. Complete o formulário do InLead ou finalize sua compra para acessar.");
-        }
-
-        // VALIDAÇÃO 2: Tem acesso válido?
-        const hasValidAccess =
-          user.platform === 'inlead' || // ✅ Veio do InLead
-          user.platform === 'hotmart' || // ✅ Comprou na Hotmart
-          user.platform === 'kirvano' || // ✅ Comprou na Kirvano
-          user.subscriptionStatus === 'active' || // ✅ Assinatura ativa
-          user.subscriptionStatus === 'trial'; // ✅ Em trial
-
-        if (!hasValidAccess) {
-          throw new Error("Sua assinatura expirou ou foi cancelada. Entre em contato com o suporte.");
-        }
-
-        // LOGIN PERMITIDO ✅
-        console.log('✅ Login permitido:', {
-          email: user.email,
-          platform: user.platform,
-          status: user.subscriptionStatus
-        });
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name || credentials.name || "Usuária",
-          platform: user.platform,
-          hasCompletedQuiz: user.hasCompletedQuiz,
-        } as ExtendedUser;
-      }
-    })
+    // 3) retornar o objeto de usuário para a sessão/JWT
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name || name,
+      platform: user.platform,              // pode ficar undefined/null
+      hasCompletedQuiz: user.hasCompletedQuiz,
+    } as ExtendedUser;
+  }
+})
   ],
   session: {
     strategy: "jwt",

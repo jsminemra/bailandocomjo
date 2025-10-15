@@ -4,39 +4,41 @@ import { prisma } from '@/lib/prisma';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, workoutGoal, workoutLocation, experienceLevel } = body;
+    const { email, workoutGoal, workoutLocation, experienceLevel, focusArea } = body;
 
-    if (!email || !workoutGoal || !workoutLocation || !experienceLevel) {
+    if (!email || !workoutGoal || !workoutLocation || !experienceLevel || !focusArea) {
       return NextResponse.json(
         { error: 'Todos os campos são obrigatórios' },
         { status: 400 }
       );
     }
 
-    // Atualizar usuário com as respostas do quiz
     const user = await prisma.user.update({
-      where: { email },
+      where: { email: String(email).toLowerCase().trim() },
       data: {
         workoutGoal,
         workoutLocation,
         experienceLevel,
+        focusArea,
         hasCompletedQuiz: true,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        workoutGoal: true,
+        workoutLocation: true,
+        experienceLevel: true,
+        focusArea: true,
+        hasCompletedQuiz: true,
+      },
     });
 
     return NextResponse.json({
       ok: true,
       message: 'Quiz salvo com sucesso',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        workoutGoal: user.workoutGoal,
-        workoutLocation: user.workoutLocation,
-        experienceLevel: user.experienceLevel,
-        hasCompletedQuiz: user.hasCompletedQuiz
-      }
+      user,
     });
 
   } catch (error) {
@@ -48,7 +50,6 @@ export async function POST(request: Request) {
   }
 }
 
-// Endpoint para buscar dados do quiz do usuário
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
     }
 
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: String(email).toLowerCase().trim() },
       select: {
         id: true,
         email: true,
@@ -70,8 +71,9 @@ export async function GET(request: Request) {
         workoutGoal: true,
         workoutLocation: true,
         experienceLevel: true,
-        hasCompletedQuiz: true
-      }
+        focusArea: true,
+        hasCompletedQuiz: true,
+      },
     });
 
     if (!user) {

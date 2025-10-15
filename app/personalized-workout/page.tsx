@@ -8,7 +8,7 @@ interface PersonalizationMeta {
   applied: boolean;
   focusArea: string | null;
   workoutGoal: string | null;
-  repsFactor: number; // ex.: 1.15
+  repsFactor: number;
 }
 
 interface Exercise {
@@ -19,9 +19,9 @@ interface Exercise {
   restSeconds: number;
   instructions: string;
   muscleGroup: string;
-  equipment?: string;
+  equipment?: string | null;
   order: number;
-  videoUrls?: string[]; // array OK
+  videoUrls?: string[] | string | null;
 }
 
 interface WorkoutDay {
@@ -34,12 +34,12 @@ interface WorkoutDay {
 interface WorkoutTemplate {
   id: string;
   name: string;
-  level: string;
+  level: 'iniciante' | 'intermediario' | 'avancado' | string;
   frequency: number;
-  description?: string;
-  location: string;
+  description?: string | null;
+  location: 'casa' | 'academia' | string;
   days: WorkoutDay[];
-  __personalization?: PersonalizationMeta; // metadados vindos da API
+  __personalization?: PersonalizationMeta;
 }
 
 const LABELS: Record<string, string> = {
@@ -55,6 +55,12 @@ const LABELS: Record<string, string> = {
   corpo_todo: 'Corpo Todo',
 };
 
+const PRIMARY = '#5d6de3';
+const PRIMARY_HOVER = '#90a0fc';
+const BG = '#ececef';
+const CARD_BG = '#ffffff';
+const BORDER = '#e5e7eb';
+
 export default function PersonalizedWorkout() {
   const [workoutCasa, setWorkoutCasa] = useState<WorkoutTemplate | null>(null);
   const [workoutAcademia, setWorkoutAcademia] = useState<WorkoutTemplate | null>(null);
@@ -67,11 +73,11 @@ export default function PersonalizedWorkout() {
   const [exerciseStatus, setExerciseStatus] = useState<Record<string, ExerciseStatus>>({});
 
   useEffect(() => {
-    fetchWorkouts();
+    void fetchWorkouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchWorkouts = async () => {
+  async function fetchWorkouts() {
     try {
       const userDataString = sessionStorage.getItem('user');
       if (!userDataString) {
@@ -80,8 +86,14 @@ export default function PersonalizedWorkout() {
       }
 
       const userData = JSON.parse(userDataString);
-      const email = userData.email;
+      const email = String(userData.email || '').trim();
       const name = userData.name || 'Aluna';
+
+      if (!email) {
+        setError('Sessão inválida: e-mail ausente.');
+        setLoading(false);
+        return;
+      }
 
       setUserEmail(email);
       setUserName(name);
@@ -95,7 +107,7 @@ export default function PersonalizedWorkout() {
       ]);
 
       if (!responseCasa.ok || !responseAcademia.ok) {
-        throw new Error('Erro ao carregar treinos');
+        throw new Error('Erro ao carregar treinos (casa/academia).');
       }
 
       const workoutDataCasa: WorkoutTemplate = await responseCasa.json();
@@ -105,9 +117,7 @@ export default function PersonalizedWorkout() {
       setWorkoutAcademia(workoutDataAcademia);
 
       const currentWorkout = userLocation === 'casa' ? workoutDataCasa : workoutDataAcademia;
-      if (currentWorkout.days && currentWorkout.days.length > 0) {
-        setSelectedDay(currentWorkout.days[0]);
-      }
+      setSelectedDay(currentWorkout?.days?.[0] ?? null);
 
       const savedStatus = sessionStorage.getItem('exerciseStatus');
       if (savedStatus) {
@@ -120,7 +130,7 @@ export default function PersonalizedWorkout() {
       setError('Erro ao carregar seus treinos personalizados');
       setLoading(false);
     }
-  };
+  }
 
   const handleLocalChange = (newLocal: 'casa' | 'academia') => {
     setCurrentLocal(newLocal);
@@ -132,29 +142,33 @@ export default function PersonalizedWorkout() {
       sessionStorage.setItem('user', JSON.stringify(userData));
     }
 
-    updateUserLocation(newLocal);
+    void updateUserLocation(newLocal);
 
     const currentWorkout = newLocal === 'casa' ? workoutCasa : workoutAcademia;
-    if (currentWorkout && currentWorkout.days.length > 0) {
+    if (currentWorkout?.days?.length) {
       const currentDayNumber = selectedDay?.dayNumber || 1;
       const newDay =
         currentWorkout.days.find((d) => d.dayNumber === currentDayNumber) || currentWorkout.days[0];
       setSelectedDay(newDay);
+    } else {
+      setSelectedDay(null);
     }
   };
 
-  const updateUserLocation = async (location: string) => {
+  async function updateUserLocation(location: 'casa' | 'academia') {
     try {
       const userDataString = sessionStorage.getItem('user');
       if (!userDataString) return;
 
       const userData = JSON.parse(userDataString);
+      const emailFromStorage = String(userData.email || '').trim();
+      if (!emailFromStorage) return;
 
       await fetch('/api/quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: userEmail,
+          email: emailFromStorage,
           workoutLocation: location,
           workoutGoal: userData.workoutGoal || 'perder_peso',
           experienceLevel: userData.experienceLevel || 'iniciante',
@@ -164,15 +178,14 @@ export default function PersonalizedWorkout() {
     } catch (err) {
       console.error('Erro ao atualizar local:', err);
     }
-  };
+  }
 
   const handleExerciseStatusChange = (exerciseId: string) => {
     const currentStatus = exerciseStatus[exerciseId] || 'not-started';
-    let newStatus: ExerciseStatus;
-
-    if (currentStatus === 'not-started') newStatus = 'in-progress';
-    else if (currentStatus === 'in-progress') newStatus = 'completed';
-    else newStatus = 'not-started';
+    const newStatus: ExerciseStatus =
+      currentStatus === 'not-started' ? 'in-progress' :
+      currentStatus === 'in-progress' ? 'completed' :
+      'not-started';
 
     const updatedStatus = { ...exerciseStatus, [exerciseId]: newStatus };
     setExerciseStatus(updatedStatus);
@@ -182,11 +195,11 @@ export default function PersonalizedWorkout() {
   const getStatusConfig = (status: ExerciseStatus) => {
     switch (status) {
       case 'not-started':
-        return { label: 'Não Iniciado', bgColor: 'bg-[#333]', hoverColor: 'hover:bg-[#444]', textColor: 'text-gray-300' };
+        return { label: 'Não Iniciado', bgColor: 'bg-[#f3f4f6]', hoverColor: 'hover:bg-[#e5e7eb]', textColor: 'text-[#374151]' };
       case 'in-progress':
-        return { label: 'Em Andamento', bgColor: 'bg-yellow-600', hoverColor: 'hover:bg-yellow-700', textColor: 'text-white' };
+        return { label: 'Em Andamento', bgColor: `bg-[${PRIMARY_HOVER}]`, hoverColor: `hover:bg-[${PRIMARY}]`, textColor: 'text-white' };
       case 'completed':
-        return { label: 'Finalizado', bgColor: 'bg-[#e8048c]', hoverColor: 'hover:bg-[#d1037a]', textColor: 'text-white' };
+        return { label: 'Finalizado', bgColor: `bg-[${PRIMARY}]`, hoverColor: `hover:bg-[${PRIMARY_HOVER}]`, textColor: 'text-white' };
     }
   };
 
@@ -195,11 +208,13 @@ export default function PersonalizedWorkout() {
   };
 
   const formatRestTime = (seconds: number): string => {
+    if (!Number.isFinite(seconds as number)) return '-';
     if (seconds >= 60) return `${Math.floor(seconds / 60)}min ${seconds % 60}s`;
     return `${seconds}s`;
   };
 
   const getDayDisplayName = (dayName: string): string => {
+    if (!dayName) return 'Treino';
     if (dayName.includes('Segunda')) return 'Segunda-feira';
     if (dayName.includes('Terça')) return 'Terça-feira';
     if (dayName.includes('Quarta')) return 'Quarta-feira';
@@ -211,6 +226,7 @@ export default function PersonalizedWorkout() {
   };
 
   const getGroupDisplayName = (dayName: string): string => {
+    if (!dayName) return 'Treino';
     if (dayName.includes('Glúteos')) return 'Glúteos';
     if (dayName.includes('Membros Inferiores')) return 'Membros Inferiores';
     if (dayName.includes('Membros Superiores')) return 'Membros Superiores';
@@ -230,11 +246,10 @@ export default function PersonalizedWorkout() {
 
   const currentWorkout = currentLocal === 'casa' ? workoutCasa : workoutAcademia;
 
-  // Badge de Personalização (usa o template do local atual)
   const badgeText = useMemo(() => {
     const meta = currentWorkout?.__personalization;
     if (!meta?.applied) return null;
-    const pct = Math.round((meta.repsFactor - 1) * 100); // ex.: 15%
+    const pct = Math.round((meta.repsFactor - 1) * 100);
     const foco = meta.focusArea ? (LABELS[meta.focusArea] || meta.focusArea) : 'Foco';
     const goal = meta.workoutGoal ? (LABELS[meta.workoutGoal] || meta.workoutGoal) : null;
     return `Foco: ${foco} (+${pct}% reps)` + (goal ? ` • Objetivo: ${goal}` : '');
@@ -242,26 +257,29 @@ export default function PersonalizedWorkout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#111] flex items-center justify-center">
-        <div className="w-full max-w-[400px] text-white text-center p-4">
-          <div className="animate-spin w-12 h-12 border-4 border-[#22C55E] border-t-transparent rounded-full mx-auto mb-4"></div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: BG }}>
+        <div className="w-full max-w-[400px] text-[#171717] text-center p-4">
+          <div className="animate-spin w-12 h-12 border-4 border-transparent rounded-full mx-auto mb-4" style={{ borderTopColor: PRIMARY }} />
           <p className="text-lg">Preparando seus treinos personalizados...</p>
-          <p className="text-sm text-gray-400 mt-2">Casa e Academia</p>
+          <p className="text-sm text-[#6b7280] mt-2">Casa e Academia</p>
         </div>
       </div>
     );
   }
 
-  if (error || !workoutCasa || !workoutAcademia || !currentWorkout) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-[#111] flex items-center justify-center p-5">
-        <div className="w-full max-w-[400px] text-white text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold mb-4">Ops, algo deu errado!</h1>
-          <p className="text-gray-300 mb-6">{error || 'Não foi possível carregar seus treinos.'}</p>
+      <div className="min-h-screen flex items-center justify-center p-5" style={{ backgroundColor: BG }}>
+        <div className="w-full max-w-[400px] text-center">
+          <div className="text-6xl mb-4" style={{ color: PRIMARY }}>⚠️</div>
+          <h1 className="text-2xl font-bold mb-4 text-[#171717]">Ops, algo deu errado!</h1>
+          <p className="mb-6 text-[#374151]">{error}</p>
           <button
             onClick={handleBackToHome}
-            className="bg-[#22C55E] hover:bg-[#16A34A] text-white font-bold py-3 px-6 rounded-lg transition-colors"
+            className="font-bold py-3 px-6 rounded-lg transition-colors text-white"
+            style={{ backgroundColor: PRIMARY }}
+            onMouseOver={(e) => ((e.currentTarget.style.backgroundColor = PRIMARY_HOVER))}
+            onMouseOut={(e) => ((e.currentTarget.style.backgroundColor = PRIMARY))}
           >
             Voltar ao início
           </button>
@@ -270,19 +288,37 @@ export default function PersonalizedWorkout() {
     );
   }
 
-  if (!selectedDay) return null;
+  if (!currentWorkout || !selectedDay) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-5" style={{ backgroundColor: BG }}>
+        <div className="w-full max-w-[400px] text-center">
+          <h1 className="text-xl font-bold mb-2 text-[#171717]">Sem treinos para mostrar</h1>
+          <p className="mb-6 text-[#374151]">Não encontramos um template para seu perfil.</p>
+          <button
+            onClick={handleBackToHome}
+            className="font-bold py-3 px-6 rounded-lg transition-colors text-white"
+            style={{ backgroundColor: PRIMARY }}
+            onMouseOver={(e) => ((e.currentTarget.style.backgroundColor = PRIMARY_HOVER))}
+            onMouseOut={(e) => ((e.currentTarget.style.backgroundColor = PRIMARY))}
+          >
+            Voltar ao início
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#111] text-white">
+    <div className="min-h-screen" style={{ backgroundColor: BG, color: '#171717' }}>
       <div className="w-full max-w-[400px] mx-auto">
         {/* Header */}
-        <div className="p-4 border-b border-gray-800">
-          <button onClick={handleBackToHome} className="text-gray-400 mb-4 flex items-center">
+        <div className="p-4 border-b" style={{ borderColor: BORDER, backgroundColor: CARD_BG }}>
+          <button onClick={handleBackToHome} className="mb-4 flex items-center text-sm text-[#6b7280] hover:text-[#111827]">
             &lt; Voltar
           </button>
 
           <div className="mb-2">
-            <span className="text-gray-400 text-sm">
+            <span className="text-sm text-[#6b7280]">
               Treino {currentWorkout.level.charAt(0).toUpperCase() + currentWorkout.level.slice(1)} - Treino {currentWorkout.frequency}x Semana
             </span>
           </div>
@@ -290,35 +326,44 @@ export default function PersonalizedWorkout() {
           <h1 className="text-2xl font-bold mb-2">
             {currentLocal === 'casa' ? 'Treino em Casa' : 'Academia'}
           </h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-sm text-[#6b7280]">
             Olá, {userName}! Aqui está sua divisão da semana:
           </p>
 
-          {/* BADGE de Personalização */}
+          {/* Badge de Personalização */}
           {badgeText && (
-            <div className="mt-3 inline-flex items-center gap-2 bg-[#151515] border border-[#2a2a2a] text-[#22C55E] px-3 py-1.5 rounded-full text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+            <div
+              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
+              style={{ backgroundColor: '#f3f4ff', border: `1px solid ${PRIMARY_HOVER}`, color: PRIMARY }}
+            >
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIMARY }} />
               {badgeText}
             </div>
           )}
         </div>
 
         {/* Seletor Casa/Academia */}
-        <div className="p-4 border-b border-gray-800">
-          <div className="flex bg-[#222] rounded-lg p-1">
+        <div className="p-4 border-b" style={{ borderColor: BORDER, backgroundColor: CARD_BG }}>
+          <div className="flex rounded-lg p-1" style={{ backgroundColor: '#f3f4f6' }}>
             <button
               onClick={() => handleLocalChange('casa')}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                currentLocal === 'casa' ? 'bg-[#22C55E] text-white' : 'text-gray-400 hover:text-white'
+                currentLocal === 'casa' ? 'text-white' : 'text-[#374151] hover:text-[#111827]'
               }`}
+              style={{ backgroundColor: currentLocal === 'casa' ? PRIMARY : 'transparent' }}
+              onMouseOver={(e) => currentLocal !== 'casa' && (e.currentTarget.style.backgroundColor = '#e9eafc')}
+              onMouseOut={(e) => currentLocal !== 'casa' && (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               Casa
             </button>
             <button
               onClick={() => handleLocalChange('academia')}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                currentLocal === 'academia' ? 'bg-[#22C55E] text-white' : 'text-gray-400 hover:text-white'
+                currentLocal === 'academia' ? 'text-white' : 'text-[#374151] hover:text-[#111827]'
               }`}
+              style={{ backgroundColor: currentLocal === 'academia' ? PRIMARY : 'transparent' }}
+              onMouseOver={(e) => currentLocal !== 'academia' && (e.currentTarget.style.backgroundColor = '#e9eafc')}
+              onMouseOut={(e) => currentLocal !== 'academia' && (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               Academia
             </button>
@@ -326,7 +371,7 @@ export default function PersonalizedWorkout() {
         </div>
 
         {/* Day Selector */}
-        <div className="p-4">
+        <div className="p-4" style={{ backgroundColor: CARD_BG }}>
           <div className="relative">
             <select
               value={selectedDay.id}
@@ -334,7 +379,8 @@ export default function PersonalizedWorkout() {
                 const day = currentWorkout.days.find((d) => d.id === e.target.value);
                 if (day) setSelectedDay(day);
               }}
-              className="w-full bg-[#333] text-white p-3 rounded-lg border border-gray-600 appearance-none cursor-pointer"
+              className="w-full p-3 rounded-lg border appearance-none cursor-pointer"
+              style={{ backgroundColor: '#f9fafb', color: '#111827', borderColor: BORDER }}
             >
               {currentWorkout.days.map((day) => (
                 <option key={day.id} value={day.id}>
@@ -342,30 +388,36 @@ export default function PersonalizedWorkout() {
                 </option>
               ))}
             </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">▼</div>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7280] pointer-events-none">▼</div>
           </div>
         </div>
 
         {/* Exercises List */}
         <div className="px-4 pb-4">
           {selectedDay.exercises.map((exercise) => {
+            const videos = Array.isArray(exercise.videoUrls)
+              ? exercise.videoUrls
+              : exercise.videoUrls
+              ? [exercise.videoUrls]
+              : [];
+
             const status = exerciseStatus[exercise.id] || 'not-started';
             const statusConfig = getStatusConfig(status);
 
             return (
-              <div key={exercise.id} className="bg-[#222] rounded-lg p-4 mb-3">
+              <div key={exercise.id} className="rounded-lg p-4 mb-3" style={{ backgroundColor: CARD_BG, border: `1px solid ${BORDER}` }}>
                 {/* Exercise Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <h3 className="text-white font-bold text-lg mb-1">{exercise.name}</h3>
-                    <div className="flex items-center gap-4 text-sm text-gray-400 mb-2">
+                    <h3 className="font-bold text-lg mb-1">{exercise.name}</h3>
+                    <div className="flex items-center gap-4 text-sm text-[#6b7280] mb-2">
                       <span>Séries: {exercise.sets}</span>
                       <span>|</span>
                       <span>Repetições: {exercise.reps}</span>
                     </div>
                   </div>
                   {exercise.equipment && exercise.equipment !== 'peso corporal' && (
-                    <div className="bg-[#333] px-2 py-1 rounded text-xs text-gray-300 ml-2">
+                    <div className="px-2 py-1 rounded text-xs ml-2" style={{ backgroundColor: '#f3f4f6', color: '#374151' }}>
                       {exercise.equipment}
                     </div>
                   )}
@@ -373,39 +425,44 @@ export default function PersonalizedWorkout() {
 
                 {/* Exercise Description */}
                 <div className="mb-3">
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    <span className="font-medium">Descrição:</span> {exercise.instructions}
+                  <p className="text-sm leading-relaxed text-[#374151]">
+                    <span className="font-medium text-[#111827]">Descrição:</span> {exercise.instructions}
                   </p>
                 </div>
 
                 {/* Additional Info */}
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                <div className="flex items-center justify-between text-xs text-[#6b7280] mb-3">
                   <span>Equipamento: {exercise.equipment || 'Peso corporal'}</span>
                   <span>Descanso: {formatRestTime(exercise.restSeconds)}</span>
                 </div>
 
                 {/* Vídeos + Status */}
                 <div className="flex gap-2 flex-wrap">
-                  {exercise.videoUrls && exercise.videoUrls.length > 0 && (
-                    exercise.videoUrls.length === 1 ? (
+                  {videos.length > 0 &&
+                    (videos.length === 1 ? (
                       <button
-                        className="flex-1 min-w-[140px] bg-[#e8048c] hover:bg-[#d1037a] text-white py-2 px-3 rounded text-sm transition-colors font-bold"
-                        onClick={() => window.open(exercise.videoUrls![0], '_blank')}
+                        className="flex-1 min-w-[140px] text-white py-2 px-3 rounded text-sm font-bold transition-colors"
+                        style={{ backgroundColor: PRIMARY }}
+                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = PRIMARY_HOVER)}
+                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = PRIMARY)}
+                        onClick={() => window.open(videos[0], '_blank')}
                       >
                         ▶ VER EXECUÇÃO
                       </button>
                     ) : (
-                      exercise.videoUrls.map((url, index) => (
+                      videos.map((url, index) => (
                         <button
                           key={index}
-                          className="flex-1 min-w-[100px] bg-[#e8048c] hover:bg-[#d1037a] text-white py-2 px-3 rounded text-sm transition-colors font-bold"
+                          className="flex-1 min-w-[100px] text-white py-2 px-3 rounded text-sm font-bold transition-colors"
+                          style={{ backgroundColor: PRIMARY }}
+                          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = PRIMARY_HOVER)}
+                          onMouseOut={(e) => (e.currentTarget.style.backgroundColor = PRIMARY)}
                           onClick={() => window.open(url, '_blank')}
                         >
                           ▶ VÍD {index + 1}
                         </button>
                       ))
-                    )
-                  )}
+                    ))}
                   <button
                     className={`flex-1 min-w-[120px] ${statusConfig.bgColor} ${statusConfig.hoverColor} ${statusConfig.textColor} py-2 px-3 rounded text-sm transition-colors`}
                     onClick={() => handleExerciseStatusChange(exercise.id)}
@@ -419,15 +476,18 @@ export default function PersonalizedWorkout() {
         </div>
 
         {/* Bottom Actions */}
-        <div className="p-4 border-t border-gray-800">
+        <div className="p-4 border-t" style={{ borderColor: BORDER, backgroundColor: CARD_BG }}>
           <button
             onClick={handleBackToHome}
-            className="w-full bg-[#666] hover:bg-[#555] text-white py-3 px-4 rounded-lg transition-colors text-sm"
+            className="w-full text-white py-3 px-4 rounded-lg transition-colors text-sm"
+            style={{ backgroundColor: PRIMARY }}
+            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = PRIMARY_HOVER)}
+            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = PRIMARY)}
           >
             Menu Principal
           </button>
           <div className="mt-4 text-center">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-[#6b7280]">
               {currentLocal === 'casa' ? '🏠 Treino em Casa' : '🏋️ Treino na Academia'} • Dia {selectedDay.dayNumber} de {currentWorkout.frequency} • {selectedDay.exercises.length} exercícios
             </p>
           </div>
